@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDI Fade-in/out Generaattori (Python Backend)</title>
+    <style>
+        /* Offline-yhteensopiva fontti ilman Google Fonts riippuvuutta */
+        body {
+            font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #000033 100%);
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%);
+            color: #ffffff;
+            margin: 0;
+            padding: 15px;
+            min-height: 100vh;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, 
+                transparent 49%, 
+                rgba(120, 219, 255, 0.05) 50%, 
+                transparent 51%);
+            background-size: 60px 60px;
+            animation: matrix 20s linear infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes matrix {
+            0% { transform: translateX(0) translateY(0); }
+            100% { transform: translateX(60px) translateY(60px); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 0 30px rgba(120, 219, 255, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(120, 219, 255, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: #78dbff;
+            text-shadow: 0 0 10px rgba(120, 219, 255, 0.5);
+            margin-bottom: 30px;
+            font-weight: 900;
+            letter-spacing: 2px;
+        }
+
+        .scene-container {
+            background: linear-gradient(135deg, rgba(51, 0, 102, 0.3) 0%, rgba(26, 0, 51, 0.5) 100%);
+            border: 1px solid rgba(120, 219, 255, 0.3);
+            border-radius: 8px;
+            padding: 8px;
+            margin: 8px 0;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 2px 10px rgba(138, 43, 226, 0.2);
+        }        .scene-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            gap: 8px;
+        }
+
+        .scene-name {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(120, 219, 255, 0.5);
+            border-radius: 5px;
+            padding: 6px 10px;
+            color: #78dbff;
+            font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .fade-container {
+            display: flex;
+            gap: 15px;
+            margin: 6px 0;
+            align-items: center;
+        }
+
+        .fade-input {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(120, 219, 255, 0.5);
+            border-radius: 5px;
+            padding: 6px;
+            color: #78dbff;
+            width: 70px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .channel-container {
+            margin: 8px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .channel-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+            flex-wrap: nowrap;
+        }
+
+        .channel-input, .velocity-input {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(120, 219, 255, 0.5);
+            border-radius: 5px;
+            padding: 6px;
+            color: #78dbff;
+            width: 50px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .button {
+            background: linear-gradient(45deg, #330066, #78dbff);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            padding: 10px 20px;
+            font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .button:hover {
+            background: linear-gradient(45deg, #78dbff, #330066);
+            box-shadow: 0 0 15px rgba(120, 219, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .remove-button {
+            background: linear-gradient(45deg, #660033, #ff4466);
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        .remove-button:hover {
+            background: linear-gradient(45deg, #ff4466, #660033);
+        }
+
+        .section-header {
+            margin: 20px 0 12px 0;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, rgba(51, 0, 102, 0.8) 0%, rgba(120, 219, 255, 0.3) 100%);
+            border: 2px solid rgba(120, 219, 255, 0.6);
+            border-radius: 12px;
+            backdrop-filter: blur(15px);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section-header h2 {
+            margin: 0;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(120, 219, 255, 0.6);
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            align-items: center;
+            flex-wrap: wrap;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 12px;
+            border-radius: 10px;
+            border: 2px solid rgba(120, 219, 255, 0.5);
+            box-shadow: 0 0 20px rgba(120, 219, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .scenes-container {
+            max-height: 350px;
+            overflow-y: auto;
+            border: 2px solid rgba(120, 219, 255, 0.3);
+            border-radius: 10px;
+            border-top-left-radius: 0;
+            border-top-right-radius: 0;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            margin: 0 0 15px 0;
+        }
+
+        .scenes-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scenes-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        .scenes-container::-webkit-scrollbar-thumb {
+            background: linear-gradient(45deg, #330066, #78dbff);
+            border-radius: 4px;
+        }
+
+        .scenes-container::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(45deg, #78dbff, #330066);
+        }
+
+        .controls-top {
+            position: static;
+            background: rgba(51, 0, 102, 0.2);
+            border: 1px solid rgba(120, 219, 255, 0.3);
+            margin-bottom: 30px;
+        }
+
+        .status-area {
+            position: static;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(120, 219, 255, 0.3);
+            border-radius: 10px;
+            padding: 12px;
+            margin: 15px 0;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .status-message {
+            font-size: 16px;
+            color: #78dbff;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(120, 219, 255, 0.5);
+            text-align: center;
+        }
+
+        .steps-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #stepsNum {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(120, 219, 255, 0.5);
+            border-radius: 5px;
+            padding: 8px;
+            color: #78dbff;
+            width: 60px;
+            text-align: center;
+        }
+
+        #downloadLinks {
+            position: sticky;
+            bottom: 120px;
+            margin-top: 30px;
+            margin-bottom: 150px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 10px;
+            border: 2px solid rgba(0, 255, 0, 0.5);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            backdrop-filter: blur(10px);
+            z-index: 999;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        #downloadLinks h2 {
+            color: #78dbff;
+            margin-bottom: 15px;
+        }
+
+        #downloadLinks a {
+            color: #78dbff;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.3s ease;
+        }
+
+        #downloadLinks a:hover {
+            border-bottom-color: #78dbff;
+        }
+
+        .status-message {
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            animation: slideInUp 0.3s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Parannettu responsiivisuus */
+                @media (max-width: 768px) {
+            .scenes-container {
+                max-height: 300px;
+            }
+            
+            .scene-container {
+                margin: 10px 0;
+                padding: 15px;
+                border-radius: 15px 15px 0 0;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            #downloadLinks {
+                margin-left: 10px;
+                margin-right: 10px;
+            }
+            
+            .fade-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .channel-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 5px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .steps-control {
+                justify-content: center;
+            }
+        }
+
+        .status-success {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid rgba(0, 255, 0, 0.5);
+            color: #00ff00;
+        }
+
+        .status-error {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid rgba(255, 0, 0, 0.5);
+            color: #ff4444;
+        }
+
+        .status-info {
+            background: rgba(255, 255, 0, 0.2);
+            border: 1px solid rgba(255, 255, 0, 0.5);
+            color: #ffff00;
+        }
+
+        label {
+            color: #78dbff;
+            font-weight: bold;
+            margin-right: 6px;
+            font-size: 13px;
+        }
+
+        /* Neon-nuotti yläosaan */
+        .header-logo {
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .music-note-neon {
+            width: 120px;
+            height: 120px;
+            margin: 15px auto;
+            border-radius: 50%;
+            filter: drop-shadow(0 0 10px #00f5ff) drop-shadow(0 0 20px #ff006e) drop-shadow(0 0 30px #8338ec);
+            animation: neonPulse 3s ease-in-out infinite alternate;
+            object-fit: cover;
+        }
+
+        @keyframes neonPulse {
+            0% { 
+                filter: drop-shadow(0 0 5px #00f5ff) drop-shadow(0 0 10px #ff006e) drop-shadow(0 0 15px #8338ec);
+                transform: scale(1);
+            }
+            100% { 
+                filter: drop-shadow(0 0 15px #00f5ff) drop-shadow(0 0 25px #ff006e) drop-shadow(0 0 35px #8338ec);
+                transform: scale(1.05);
+            }
+        }
+
+        @keyframes statusFadeIn {
+            0% { 
+                opacity: 0; 
+                transform: scale(0.8) translateY(-20px); 
+            }
+            100% { 
+                opacity: 1; 
+                transform: scale(1) translateY(0); 
+            }
+        }
+
+        @keyframes statusFadeOut {
+            0% { 
+                opacity: 1; 
+                transform: scale(1) translateY(0); 
+            }
+            100% { 
+                opacity: 0; 
+                transform: scale(0.8) translateY(-20px); 
+            }
+        }
+
+        /* Status modal responsiivisuus */
+        @media (max-width: 768px) {
+            #statusContent {
+                margin: 10px !important;
+                padding: 15px 20px !important;
+                max-width: 95% !important;
+            }
+            #statusMessage {
+                font-size: 14px !important;
+                line-height: 1.3 !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #statusContent {
+                margin: 5px !important;
+                padding: 12px 15px !important;
+                max-width: 98% !important;
+            }
+            #statusMessage {
+                font-size: 13px !important;
+                line-height: 1.2 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <!-- Kaunis neon-nuotti yläosaan -->
+        <div class="header-logo">
+            <img src="nuotti.jpg" alt="Neon Music Note" class="music-note-neon">
+        </div>
+        
+        <h1>🎵 MIDI Fade-in/out Generaattori 🎵</h1>
+        
+        <!-- ESITYS OSIO -->
+        <div class="controls" style="margin-bottom: 25px; min-height: 80px; align-items: stretch; position: relative;">
+            <!-- Otsikko täyskorkea vasemmalla -->
+            <div style="background: linear-gradient(135deg, rgba(51, 0, 102, 0.9) 0%, rgba(120, 219, 255, 0.4) 100%); border: 2px solid rgba(120, 219, 255, 0.7); border-radius: 8px; padding: 8px 0; width: 120px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2;">
+                <h2 style="margin: 0; color: #ffffff; font-size: 14px; font-weight: bold; text-shadow: 0 0 10px rgba(120, 219, 255, 0.8); letter-spacing: 1px; text-align: center;">📋<br>Esitys</h2>
+            </div>
+            <!-- Uusi esitys -teksti keskitetty koko palkin leveyteen -->
+            <div style="position: absolute; top: 8px; left: 0; right: 0; display: flex; justify-content: center; z-index: 1;">
+                <div style="background: linear-gradient(135deg, rgba(26, 0, 51, 0.7) 0%, rgba(51, 0, 102, 0.7) 100%); border: 2px solid rgba(120, 219, 255, 0.4); border-radius: 8px; backdrop-filter: blur(5px); padding: 8px;">
+                    <span id="currentPresetName" style="color: #78dbff; font-size: 18px; font-weight: bold; text-shadow: 0 0 8px rgba(120, 219, 255, 0.5); letter-spacing: 1px;">Uusi esitys</span>
+                </div>
+            </div>
+            <!-- Sisältö oikealla -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 3; padding-top: 50px;">
+                <!-- Tallenna/Lataa kontrollit -->
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <input type="text" id="presetName" placeholder="Esityksen nimi" style="flex: 1; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;">
+                    <button class="button" onclick="savePreset()">💾 Tallenna esitys</button>
+                    <button class="button" onclick="loadPresetsDialog()">📂 Lataa esitys</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MIDI OSIO -->
+        <div class="controls" style="margin-bottom: 15px; min-height: 80px; align-items: stretch;">
+            <!-- Otsikko täyskorkea vasemmalla -->
+            <div style="background: linear-gradient(135deg, rgba(51, 0, 102, 0.9) 0%, rgba(120, 219, 255, 0.4) 100%); border: 2px solid rgba(120, 219, 255, 0.7); border-radius: 8px; padding: 0; width: 120px; display: flex; align-items: center; justify-content: center;">
+                <h2 style="margin: 0; color: #ffffff; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(120, 219, 255, 0.8); letter-spacing: 1px; text-align: center;">🎵<br>MIDI</h2>
+            </div>
+            <!-- Sisältö oikealla -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                <!-- MIDI kontrollit -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <!-- Vasen puoli: Hakemisto ja polku päällekkäin -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <div class="steps-control">
+                            <label for="outputDir">Tallennushakemisto:</label>
+                            <input type="text" id="outputDir" value="generated_midi" placeholder="Esim: midifiles tai /Users/user/Documents/MIDI" style="background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace; width: 200px;" oninput="updatePathPreview()">
+                            <button class="button" onclick="showDirectoryHelp()" style="margin-left: 5px; padding: 6px 10px; font-size: 12px;">ℹ️</button>
+                        </div>
+                        <!-- Polun esikatselu -->
+                        <div id="pathPreview" style="padding: 4px 8px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(120, 219, 255, 0.3); border-radius: 5px; color: #78dbff; font-size: 10px; width: 400px;">
+                            <strong>📁</strong> <span id="previewPath">/Users/raulivirtanen/Documents/valot/generated_midi</span>
+                        </div>
+                    </div>
+                    <!-- Oikea puoli: Askeleet ja nappi päällekkäin -->
+                    <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+                        <div class="steps-control">
+                            <label for="stepsNum">Himmennyksen askeleet:</label>
+                            <input type="number" id="stepsNum" value="20" min="5" max="100">
+                        </div>
+                        <button class="button" onclick="generateMIDIs()" id="generateButton">🎵 Generoi MIDI-tiedostot</button>
+                    </div>
+                </div>
+                <!-- Polun ohje -->
+                <div id="directoryHelp" style="padding: 8px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.4); border-radius: 6px; color: #78dbff; font-size: 11px; display: none;">
+                    <strong>📁 Tallennushakemiston ohje:</strong><br>
+                    • <strong>Suhteellinen polku:</strong> <code>midifiles</code> → tallentaa projektihakemistoon<br>
+                    • <strong>Absoluuttinen polku:</strong> <code>/Users/nimi/Documents/MIDI</code> → tallentaa tuohon sijaintiin<br>
+                    • <strong>Kotihakemisto:</strong> <code>~/Desktop/midifiles</code> → tallentaa työpöydälle<br>
+                    • Hakemisto luodaan automaattisesti jos sitä ei ole olemassa
+                </div>
+            </div>
+        </div>
+
+        <!-- KOHTAUKSET OSIO -->
+        <div class="controls" style="margin-bottom: 0; min-height: 60px; align-items: center; border-bottom-left-radius: 0; border-bottom-right-radius: 0; position: relative;">
+            <!-- Otsikko täyskorkea vasemmalla -->
+            <div style="background: linear-gradient(135deg, rgba(51, 0, 102, 0.9) 0%, rgba(120, 219, 255, 0.4) 100%); border: 2px solid rgba(120, 219, 255, 0.7); border-radius: 8px; padding: 8px 0; width: 120px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2;">
+                <h2 style="margin: 0; color: #ffffff; font-size: 14px; font-weight: bold; text-shadow: 0 0 10px rgba(120, 219, 255, 0.8); letter-spacing: 1px; text-align: center;">🎭<br>Kohtaukset</h2>
+            </div>
+            <!-- Nappi keskitetty koko palkin leveyteen -->
+            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; z-index: 1;">
+                <button class="button" onclick="addNewScene()">➕ Lisää uusi kohtaus</button>
+            </div>
+        </div>
+
+        <!-- Palautteet - Modal-tyyppinen -->
+        <div id="statusModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: none; z-index: 10000; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;" onclick="closeStatusModal(event)">
+            <div id="statusContent" style="background: linear-gradient(135deg, rgba(26, 0, 51, 0.95) 0%, rgba(51, 0, 102, 0.95) 100%); border: 3px solid rgba(120, 219, 255, 0.8); border-radius: 15px; padding: 20px 25px; text-align: center; box-shadow: 0 0 30px rgba(120, 219, 255, 0.5); backdrop-filter: blur(10px); max-width: 90%; width: auto; max-height: 80%; overflow-y: auto; animation: statusFadeIn 0.3s ease-out;" onclick="event.stopPropagation()">
+                <div id="statusMessage" style="color: #ffffff; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(120, 219, 255, 0.8); line-height: 1.4; word-wrap: break-word; overflow-wrap: break-word; hyphens: auto;"></div>
+            </div>
+        </div>
+
+        <!-- SCROLLATTAVA KOHTAUSLISTA -->
+        <div class="scenes-container">
+            <div id="scenes"></div>
+        </div>
+        
+        <!-- Latauslinkit -->
+        <div id="downloadLinks" style="display: none;">
+            <h2>📥 Latauslinkit</h2>
+        </div>
+        
+        <!-- Copyright footer -->
+        <div style="text-align: center; margin-top: 20px; padding: 10px; color: #666; font-size: 12px;">
+            © Rauli Virtanen 2025
+        </div>
+    </div>
+
+    <script>
+        let sceneCounter = 0;
+
+        function showDirectoryHelp() {
+            const helpDiv = document.getElementById('directoryHelp');
+            if (helpDiv.style.display === 'none' || helpDiv.style.display === '') {
+                helpDiv.style.display = 'block';
+                setTimeout(() => {
+                    helpDiv.style.display = 'none';
+                }, 8000); // Piilota 8 sekunnin kuluttua
+            } else {
+                helpDiv.style.display = 'none';
+            }
+        }
+
+        function updatePathPreview() {
+            const outputDir = document.getElementById('outputDir').value.trim();
+            const previewPath = document.getElementById('previewPath');
+            
+            if (outputDir.startsWith('/')) {
+                // Absoluuttinen polku
+                previewPath.textContent = outputDir;
+            } else if (outputDir.startsWith('~/')) {
+                // Kotihakemisto
+                previewPath.textContent = outputDir.replace('~', '/Users/raulivirtanen');
+            } else if (outputDir === '') {
+                // Tyhjä -> oletus
+                previewPath.textContent = '/Users/raulivirtanen/Documents/valot/generated_midi';
+            } else {
+                // Suhteellinen polku
+                previewPath.textContent = `/Users/raulivirtanen/Documents/valot/${outputDir}`;
+            }
+        }
+
+        function addNewScene() {
+            sceneCounter++;
+            const scenesDiv = document.getElementById('scenes');
+            const sceneDiv = document.createElement('div');
+            sceneDiv.className = 'scene-container';
+            sceneDiv.innerHTML = `
+                <div class="scene-header">
+                    <span style="color: #ff6b9d; font-weight: bold; font-size: 16px; margin-right: 8px;">#${sceneCounter}</span>
+                    <input type="text" class="scene-name" placeholder="Kohtauksen nimi" required>
+                    <button class="button remove-button" onclick="removeScene(this)">🗑️ Poista</button>
+                </div>
+                
+                <div class="fade-container">
+                    <label>Fade-in kesto (s):</label>
+                    <input type="number" class="fade-input" value="1.0" step="0.1" min="0.1">
+                    <label>Fade-out kesto (s):</label>
+                    <input type="number" class="fade-input" value="1.0" step="0.1" min="0.1">
+                </div>
+                
+                <div class="channel-container">
+                    <div class="channel-row">
+                        <label>Kanava:</label>
+                        <input type="number" class="channel-input" value="1" min="1" max="100">
+                        <label>Arvo (0-127):</label>
+                        <input type="number" class="velocity-input" value="127" min="0" max="127">
+                        <button class="button remove-button" onclick="removeChannel(this)">❌</button>
+                    </div>
+                    <button class="button" onclick="addChannel(this)" style="margin-top: 6px; font-size: 12px; padding: 4px 8px;">➕ Lisää kanava</button>
+                </div>
+            `;
+            scenesDiv.appendChild(sceneDiv);
+            
+            // Skrollaa uuteen kohtaukseen
+            setTimeout(() => {
+                sceneDiv.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                // Fokusoi nimen syöttökenttään
+                const nameInput = sceneDiv.querySelector('.scene-name');
+                if (nameInput) {
+                    nameInput.focus();
+                }
+            }, 100);
+        }
+
+        function removeScene(button) {
+            button.closest('.scene-container').remove();
+            renumberScenes();
+        }
+
+        function renumberScenes() {
+            const scenes = document.querySelectorAll('.scene-container');
+            scenes.forEach((scene, index) => {
+                const numberSpan = scene.querySelector('.scene-header span');
+                if (numberSpan) {
+                    numberSpan.textContent = `#${index + 1}`;
+                }
+            });
+            sceneCounter = scenes.length;
+        }
+
+        function addChannel(button) {
+            const channelContainer = button.parentElement;
+            const newChannelRow = document.createElement('div');
+            newChannelRow.className = 'channel-row';
+            newChannelRow.innerHTML = `
+                <label>Kanava:</label>
+                <input type="number" class="channel-input" value="1" min="1" max="100">
+                <label>Arvo (0-127):</label>
+                <input type="number" class="velocity-input" value="127" min="0" max="127">
+                <button class="button remove-button" onclick="removeChannel(this)">❌</button>
+            `;
+            channelContainer.insertBefore(newChannelRow, button);
+        }
+
+        function removeChannel(button) {
+            button.closest('.channel-row').remove();
+        }
+
+        async function savePreset() {
+            const presetName = document.getElementById('presetName').value.trim();
+            if (!presetName) {
+                showStatus('⚠️ Anna esitykselle nimi!', 'error');
+                return;
+            }
+
+            // Tarkista onko samanniminen esitys jo olemassa
+            try {
+                const response = await fetch('/presets');
+                const existingPresets = await response.json();
+                console.log('Existing presets:', existingPresets.map(p => p.name));
+                const existingPreset = existingPresets.find(p => p.name === presetName);
+                console.log('Found existing preset:', existingPreset ? 'YES' : 'NO');
+                
+                if (existingPreset) {
+                    console.log('Showing confirm dialog...');
+                    try {
+                        const confirmOverwrite = await showConfirmDialog(
+                            `Esitys "${presetName}" on jo olemassa`,
+                            `Haluatko korvata sen uudella versiolla?`,
+                            'Korvaa',
+                            'Peruuta'
+                        );
+                        console.log('Confirm result:', confirmOverwrite);
+                        if (!confirmOverwrite) {
+                            console.log('User cancelled save');
+                            return; // Käyttäjä peruutti tallennuksen
+                        }
+                    } catch (error) {
+                        console.error('Error with confirm dialog:', error);
+                        // Fallback tavalliseen confirm-dialogiin
+                        const confirmOverwrite = confirm(`Esitys "${presetName}" on jo olemassa.\n\nHaluatko korvata sen uudella versiolla?`);
+                        if (!confirmOverwrite) {
+                            return;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn('Virhe tarkistettaessa olemassa olevia esityksiä:', error);
+                // Jatkaa tallennusta jos tarkistus epäonnistuu
+            }
+
+            const scenes = document.querySelectorAll('.scene-container');
+            const scenesData = [];
+            const steps = parseInt(document.getElementById('stepsNum').value) || 20;
+
+            scenes.forEach(sceneDiv => {
+                const sceneName = sceneDiv.querySelector('.scene-name').value.trim();
+                if (!sceneName) return;
+                
+                const fadeInputs = sceneDiv.querySelectorAll('.fade-input');
+                const fadeInDuration = parseFloat(fadeInputs[0].value) || 1.0;
+                const fadeOutDuration = parseFloat(fadeInputs[1].value) || 1.0;
+                
+                const channelRows = sceneDiv.querySelectorAll('.channel-row');
+                const channels = {};
+                
+                channelRows.forEach(row => {
+                    const channelInput = row.querySelector('.channel-input');
+                    const velocityInput = row.querySelector('.velocity-input');
+                    if (channelInput && velocityInput) {
+                        const channel = parseInt(channelInput.value);
+                        const velocity = parseInt(velocityInput.value);
+                        if (channel && velocity >= 0) {
+                            channels[channel] = velocity;
+                        }
+                    }
+                });
+
+                if (Object.keys(channels).length > 0) {
+                    scenesData.push({
+                        name: sceneName,
+                        channels: channels,
+                        fade_in_duration: fadeInDuration,
+                        fade_out_duration: fadeOutDuration
+                    });
+                }
+            });
+
+            if (scenesData.length === 0) {
+                showStatus('⚠️ Ei tallennettavia kohtauksia!', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/save-preset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: presetName,
+                        scenes: scenesData,
+                        steps: steps
+                    })
+                });
+
+                if (response.ok) {
+                    showStatus(`Esitys "${presetName}" tallennettu onnistuneesti!`, 'success');
+                    document.getElementById('currentPresetName').textContent = presetName;
+                    // Jätä nimi kenttään seuraavaa tallennusta varten
+                } else {
+                    throw new Error('Tallennusvirhe');
+                }
+            } catch (error) {
+                showStatus(`Virhe tallennuksessa: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadPresetsDialog() {
+            try {
+                const response = await fetch('/presets');
+                const presets = await response.json();
+
+                if (presets.length === 0) {
+                    showStatus('⚠️ Ei tallennettuja esityksiä!', 'error');
+                    return;
+                }
+
+                // Luodaan teeman mukainen dialogi
+                const dialogOverlay = document.createElement('div');
+                dialogOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 2000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    background: linear-gradient(135deg, rgba(26, 0, 51, 0.95) 0%, rgba(51, 0, 102, 0.95) 100%);
+                    border: 2px solid #8a2be2;
+                    border-radius: 15px;
+                    padding: 20px;
+                    max-width: 500px;
+                    max-height: 70vh;
+                    overflow-y: auto;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+                `;
+
+                dialog.innerHTML = `
+                    <h3 style="color: #78dbff; margin-top: 0; text-align: center;">📂 Valitse ladattava esitys</h3>
+                    <div id="presetList"></div>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button class="button" onclick="this.closest('.dialog-overlay').remove()" style="background: linear-gradient(45deg, #660033, #ff4466);">❌ Peruuta</button>
+                    </div>
+                `;
+
+                const presetList = dialog.querySelector('#presetList');
+                presets.forEach((preset, index) => {
+                    const presetItem = document.createElement('div');
+                    presetItem.style.cssText = `
+                        background: rgba(0, 0, 0, 0.5);
+                        border: 1px solid rgba(120, 219, 255, 0.3);
+                        border-radius: 8px;
+                        padding: 12px;
+                        margin: 8px 0;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                    `;
+                    
+                    presetItem.innerHTML = `
+                        <div style="color: #78dbff; font-weight: bold; font-size: 16px;">${preset.name}</div>
+                        <div style="color: #ff6b9d; font-size: 14px;">${preset.scenes.length} kohtausta</div>
+                        <div style="color: #888; font-size: 12px;">${preset.saved_at ? new Date(preset.saved_at).toLocaleString() : 'Ei aikaleimaa'}</div>
+                    `;
+                    
+                    presetItem.addEventListener('mouseenter', () => {
+                        presetItem.style.background = 'rgba(120, 219, 255, 0.2)';
+                        presetItem.style.borderColor = 'rgba(120, 219, 255, 0.7)';
+                    });
+                    
+                    presetItem.addEventListener('mouseleave', () => {
+                        presetItem.style.background = 'rgba(0, 0, 0, 0.5)';
+                        presetItem.style.borderColor = 'rgba(120, 219, 255, 0.3)';
+                    });
+                    
+                    presetItem.addEventListener('click', () => {
+                        loadPreset(preset);
+                        dialogOverlay.remove();
+                    });
+                    
+                    presetList.appendChild(presetItem);
+                });
+
+                dialogOverlay.className = 'dialog-overlay';
+                dialogOverlay.appendChild(dialog);
+                document.body.appendChild(dialogOverlay);
+
+            } catch (error) {
+                showStatus(`Virhe esitysten latauksessa: ${error.message}`, 'error');
+            }
+        }
+
+        function loadPreset(preset) {
+            // Tyhjennä nykyiset kohtaukset
+            document.getElementById('scenes').innerHTML = '';
+            sceneCounter = 0;
+            
+            // Aseta esityksen nimi näkyviin ja tallennuskenttään
+            document.getElementById('currentPresetName').textContent = preset.name;
+            document.getElementById('presetName').value = preset.name;
+            
+            // Aseta steppien määrä
+            document.getElementById('stepsNum').value = preset.steps || 20;
+            
+            // Lataa kohtaukset
+            preset.scenes.forEach(sceneData => {
+                addNewScene();
+                const sceneContainers = document.querySelectorAll('.scene-container');
+                const lastContainer = sceneContainers[sceneContainers.length - 1];
+                
+                // Aseta kohtauksen nimi
+                lastContainer.querySelector('.scene-name').value = sceneData.name;
+                
+                // Aseta fade-ajat
+                const fadeInputs = lastContainer.querySelectorAll('.fade-input');
+                fadeInputs[0].value = sceneData.fade_in_duration;
+                fadeInputs[1].value = sceneData.fade_out_duration;
+                
+                // Poista oletuskanava
+                const defaultChannel = lastContainer.querySelector('.channel-row');
+                defaultChannel.remove();
+                
+                // Lisää kanavat yksi kerrallaan allekkain
+                const channelContainer = lastContainer.querySelector('.channel-container');
+                const addButton = channelContainer.querySelector('button');
+                
+                Object.entries(sceneData.channels).forEach(([channel, velocity]) => {
+                    const newChannelRow = document.createElement('div');
+                    newChannelRow.className = 'channel-row';
+                    newChannelRow.innerHTML = `
+                        <label>Kanava:</label>
+                        <input type="number" class="channel-input" value="${channel}" min="1" max="100">
+                        <label>Arvo (0-127):</label>
+                        <input type="number" class="velocity-input" value="${velocity}" min="0" max="127">
+                        <button class="button remove-button" onclick="removeChannel(this)">❌</button>
+                    `;
+                    channelContainer.insertBefore(newChannelRow, addButton);
+                });
+            });
+            
+            // Päivitä numerointi
+            renumberScenes();
+            
+            showStatus(`Esitys "${preset.name}" ladattu onnistuneesti!`, 'success');
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusModal = document.getElementById('statusModal');
+            const statusContent = document.getElementById('statusContent');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            // Aseta väri tyypin mukaan
+            let iconColor = '#78dbff'; // info
+            let icon = '💫';
+            
+            if (type === 'success') {
+                iconColor = '#00ff88';
+                icon = '✅';
+            } else if (type === 'error') {
+                iconColor = '#ff4466';
+                icon = '❌';
+            } else if (type === 'warning') {
+                iconColor = '#ffaa00';
+                icon = '⚠️';
+            }
+            
+            // Lyhennä pitkät polut jos tarpeen
+            let displayMessage = message;
+            if (message.length > 120 && message.includes('/')) {
+                // Jos viesti on pitkä ja sisältää polkuja, lyhennä keskeltä
+                const parts = message.split('/');
+                if (parts.length > 4) {
+                    displayMessage = parts.slice(0, 2).join('/') + '/.../' + parts.slice(-2).join('/');
+                }
+            }
+            
+            statusMessage.innerHTML = `${icon} ${displayMessage}`;
+            statusContent.style.borderColor = iconColor;
+            statusContent.style.boxShadow = `0 0 30px ${iconColor}`;
+            
+            // Näytä modal
+            statusModal.style.display = 'flex';
+            statusContent.style.animation = 'statusFadeIn 0.3s ease-out';
+            
+            // Piilota automaattisesti 3 sekunnin kuluttua
+            setTimeout(() => {
+                closeStatusModal();
+            }, 3000);
+        }
+
+        function closeStatusModal(event) {
+            if (event && event.target !== document.getElementById('statusModal')) {
+                return; // Klikkaus ei ollut taustalla
+            }
+            
+            const statusModal = document.getElementById('statusModal');
+            const statusContent = document.getElementById('statusContent');
+            
+            statusContent.style.animation = 'statusFadeOut 0.3s ease-out';
+            setTimeout(() => {
+                statusModal.style.display = 'none';
+            }, 300);
+        }
+
+        // Teeman mukainen varmistusdialogi
+        function showConfirmDialog(title, message, confirmText = 'OK', cancelText = 'Peruuta') {
+            console.log('showConfirmDialog called with:', title, message);
+            return new Promise((resolve) => {
+                console.log('Creating dialog overlay...');
+                const dialogOverlay = document.createElement('div');
+                dialogOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 2000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+
+                console.log('Creating dialog...');
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    background: linear-gradient(135deg, rgba(26, 0, 51, 0.95) 0%, rgba(51, 0, 102, 0.95) 100%);
+                    border: 2px solid #8a2be2;
+                    border-radius: 15px;
+                    padding: 25px;
+                    max-width: 400px;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+                    text-align: center;
+                `;
+
+                dialog.innerHTML = `
+                    <h3 style="color: #78dbff; margin-top: 0; margin-bottom: 15px;">${title}</h3>
+                    <p style="color: #ffffff; margin-bottom: 25px; line-height: 1.4;">${message}</p>
+                    <div style="display: flex; gap: 15px; justify-content: center;">
+                        <button id="confirmBtn" class="button" style="background: linear-gradient(45deg, #330066, #78dbff);">${confirmText}</button>
+                        <button id="cancelBtn" class="button" style="background: linear-gradient(45deg, #660033, #ff4466);">${cancelText}</button>
+                    </div>
+                `;
+
+                console.log('Setting up event listeners...');
+                const confirmBtn = dialog.querySelector('#confirmBtn');
+                const cancelBtn = dialog.querySelector('#cancelBtn');
+
+                confirmBtn.addEventListener('click', () => {
+                    console.log('Confirm button clicked');
+                    dialogOverlay.remove();
+                    resolve(true);
+                });
+
+                cancelBtn.addEventListener('click', () => {
+                    console.log('Cancel button clicked');
+                    dialogOverlay.remove();
+                    resolve(false);
+                });
+
+                // ESC-näppäin peruuttaa
+                const handleKeyPress = (e) => {
+                    if (e.key === 'Escape') {
+                        console.log('ESC key pressed');
+                        dialogOverlay.remove();
+                        document.removeEventListener('keydown', handleKeyPress);
+                        resolve(false);
+                    }
+                };
+                document.addEventListener('keydown', handleKeyPress);
+
+                console.log('Appending dialog to overlay...');
+                dialogOverlay.appendChild(dialog);
+                console.log('Appending overlay to body...');
+                document.body.appendChild(dialogOverlay);
+                console.log('Dialog should now be visible');
+            });
+        }
+
+        async function generateMIDIs() {
+            const downloadDiv = document.getElementById('downloadLinks');
+            downloadDiv.innerHTML = '<h2>Luodaan MIDI-tiedostoja...</h2>';
+            
+            const generateButton = document.getElementById('generateButton');
+            generateButton.disabled = true;
+            generateButton.textContent = '⏳ Luodaan...';
+            
+            try {
+                const scenes = document.querySelectorAll('.scene-container');
+                if (scenes.length === 0) {
+                    showStatus('Ei kohtauksia generointia varten.', 'error');
+                    return;
+                }
+
+                const steps = parseInt(document.getElementById('stepsNum').value) || 20;
+                const outputDir = document.getElementById('outputDir').value.trim() || 'generated_midi';
+                const scenesData = [];
+
+                // Kerää tiedot kaikista kohtauksista
+                let hasValidScenes = false;
+                scenes.forEach(sceneDiv => {
+                    const sceneName = sceneDiv.querySelector('.scene-name').value.trim();
+                    if (!sceneName) return;
+                    
+                    hasValidScenes = true;
+                    const fadeInputs = sceneDiv.querySelectorAll('.fade-input');
+                    const fadeInDuration = parseFloat(fadeInputs[0].value) || 1.0;
+                    const fadeOutDuration = parseFloat(fadeInputs[1].value) || 1.0;
+                    
+                    const channelRows = sceneDiv.querySelectorAll('.channel-row');
+                    const channels = {};
+                    
+                    channelRows.forEach(row => {
+                        const channelInput = row.querySelector('.channel-input');
+                        const velocityInput = row.querySelector('.velocity-input');
+                        if (channelInput && velocityInput) {
+                            const channel = parseInt(channelInput.value);
+                            const velocity = parseInt(velocityInput.value);
+                            if (channel && velocity >= 0) {
+                                channels[channel] = velocity;
+                            }
+                        }
+                    });
+
+                    if (Object.keys(channels).length > 0) {
+                        scenesData.push({
+                            name: sceneName,
+                            channels: channels,
+                            fade_in_duration: fadeInDuration,
+                            fade_out_duration: fadeOutDuration,
+                            steps: steps
+                        });
+                    }
+                });
+
+                if (!hasValidScenes) {
+                    showStatus('Ei kelvollisia kohtauksia generointia varten.', 'error');
+                    return;
+                }
+
+                showStatus(`Luodaan MIDI-tiedostoja ${scenesData.length} kohtaukselle...`, 'info');
+
+                // Lähetä data Python-backendille
+                const requestData = {
+                    scenes: scenesData,
+                    output_directory: outputDir
+                };
+
+                const response = await fetch('/generate-midi', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    downloadDiv.innerHTML = `<h2>✅ MIDI-tiedostot luotu onnistuneesti!</h2>
+                        <p><strong>📁 Tallennushakemisto:</strong> ${result.output_directory || outputDir}</p>`;
+                    
+                    result.results.forEach(sceneResult => {
+                        const p = document.createElement('p');
+                        p.innerHTML = `
+                            <strong>${sceneResult.scene}</strong> 
+                            (${sceneResult.steps} steppiä, ${sceneResult.channels_count} kanavaa):
+                            <br>
+                            � ${sceneResult.fade_in_file} | � ${sceneResult.fade_out_file}
+                        `;
+                        downloadDiv.appendChild(p);
+                    });
+                    
+                    showStatus(`${result.results.length} kohtausta käsitelty onnistuneesti! Tallennushakemisto: ${result.output_directory || outputDir}`, 'success');
+                } else {
+                    throw new Error(result.error || 'Tuntematon virhe');
+                }
+
+            } catch (error) {
+                console.error('Virhe MIDI-generaatiossa:', error);
+                downloadDiv.innerHTML = '<h2>❌ Virhe MIDI-tiedostojen luonnissa</h2>';
+                showStatus(`Virhe: ${error.message}`, 'error');
+                
+                // Näytä Python-backend ohjeet jos palvelin ei vastaa
+                if (error.message.includes('fetch')) {
+                    const instructionsDiv = document.createElement('div');
+                    instructionsDiv.innerHTML = `
+                        <h3>🐍 Python-palvelinta ei löytynyt</h3>
+                        <p>Käynnistä Python-palvelin terminaalissa:</p>
+                        <pre style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; color: #78dbff;">
+cd /Users/raulivirtanen/Documents/valot
+python3 -m http.server 8000 --cgi
+                        </pre>
+                        <p>Sitten avaa selaimessa: <a href="http://localhost:8000/valot3.html">http://localhost:8000/valot3.html</a></p>
+                    `;
+                    downloadDiv.appendChild(instructionsDiv);
+                }
+                
+            } finally {
+                generateButton.disabled = false;
+                generateButton.textContent = '🎵 Generoi MIDI-tiedostot';
+            }
+        }
+
+        // Alusta ensimmäinen tyhjä kohtaus
+        addNewScene();
+        
+        // Alusta polun esikatselu
+        updatePathPreview();
+    </script>
+</body>
+</html>
