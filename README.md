@@ -41,21 +41,23 @@ Download from the `/dist` folder or create a GitHub release:
 ## Setup & Requirements
 
 ### Windows 10/11 Users
-1. **Download & Install**: Get the `.exe` installer from [Releases](https://github.com/RauliV/midi-fade-generator-electron/releases)
-2. **Launch**: Find "MIDI Fade Generator" in Start Menu
-   - ✅ **No Python Required**: MIDI generation now uses Node.js internally!
+1. **Install Python**: Download Python 3.6+ from https://python.org (check "Add Python to PATH")
+2. **Install MIDI library**: Run `pip install midiutil` in Command Prompt
+3. **Download & Install**: Get the `.exe` installer from [Releases](https://github.com/RauliV/midi-fade-generator-electron/releases)
+4. **Launch**: Find "MIDI Fade Generator" in Start Menu
 
 ### macOS Users  
 1. **Download App**: Get the `.dmg` from [Releases](https://github.com/RauliV/midi-fade-generator-electron/releases)
 2. **Launch**: Open from Applications folder
-   - ✅ **No Dependencies**: Everything included in the app!
+   - ✅ **Python Included**: macOS version has Python automatically handled
 
 ### Developer Setup
 Prerequisites:
 - **Node.js** (v16 or later)
+- **Python 3.6+** with midiutil (`pip install midiutil`)
 - **Git**
 
-**Note**: Python is no longer required! MIDI generation now uses Node.js with the `jsmidgen` library.
+**Note**: Desktop applications use Python with midiutil for Logic Pro compatible MIDI generation.
 
 ```bash
 git clone https://github.com/RauliV/midi-fade-generator.git

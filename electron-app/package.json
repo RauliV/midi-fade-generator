@@ -33,6 +33,7 @@
       "main.js",
       "preload.js",
       "index.html",
+      "valot_python_backend.py",
       "nuotti.jpg",
       "node_midi_generator.js",
       "assets/**/*",
