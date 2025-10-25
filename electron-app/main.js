@@ -306,7 +306,7 @@ ipcMain.handle('generate-midi', async (event, data) => {
             python.on('error', (error) => {
                 console.error('Python spawn error:', error);
                 if (process.platform === 'win32' && error.code === 'ENOENT') {
-                    reject(new Error(`Python ei löytynyt Windowsista. Asenna Python osoitteesta https://python.org ja varmista että se on PATH-muuttujassa. Virhe: ${error.message}`));
+                    reject(new Error(`Python 3.6+ ei löytynyt Windowsista.\n\nRatkaise ongelma:\n1. Lataa Python 3.6+ osoitteesta https://python.org\n2. Asennuksen aikana valitse "Add Python to PATH"\n3. Asenna midiutil: avaa Command Prompt ja aja "pip install midiutil"\n4. Käynnistä sovellus uudestaan\n\nVirhe: ${error.message}`));
                 } else {
                     reject(new Error(`Failed to spawn Python: ${error.message}`));
                 }
@@ -328,7 +328,13 @@ ipcMain.handle('generate-midi', async (event, data) => {
                     }
                 } else {
                     console.error('❌ Python process failed:', stderr);
-                    reject(new Error(`Python process failed: ${stderr}`));
+                    
+                    // Tarkista onko kyse puuttuvasta midiutil-moduulista
+                    if (stderr.includes('No module named') && stderr.includes('midiutil')) {
+                        reject(new Error(`Python-moduuli 'midiutil' puuttuu.\n\nRatkaise ongelma:\n1. Avaa Command Prompt tai Terminal järjestelmänvalvojana\n2. Aja komento: pip install midiutil\n3. Käynnistä sovellus uudestaan\n\nJos pip ei toimi:\n- Windows: asenna Python uudestaan osoitteesta https://python.org (valitse "Add Python to PATH")\n- macOS: asenna Homebrew ja aja: brew install python\n\nVirheen tiedot: ${stderr}`));
+                    } else {
+                        reject(new Error(`Python process failed: ${stderr}`));
+                    }
                 }
             });
             

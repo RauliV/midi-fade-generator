@@ -31,13 +31,20 @@ Download the latest release from GitHub:
 
 ### Windows 10/11 Users
 **Requirements:**
-- Python 3.7+ installed from https://python.org (check "Add Python to PATH" during installation)
+- **Python 3.6+** installed from https://python.org (check "Add Python to PATH" during installation)
 - `pip install midiutil` (for MIDI generation)
 
+**Critical**: The application uses f-string syntax and requires Python 3.6 or newer. Older Python versions will not work.
+
 **Installation:**
-1. **Download & Install**: Get the `.exe` installer from [Releases](https://github.com/RauliV/midi-fade-generator-electron/releases)
-2. **Launch**: Find "MIDI Fade Generator" in Start Menu
-   - ✅ **No Python Required**: MIDI generation now uses Node.js internally!
+1. **Install Python**: Download from https://python.org (3.6+ required)
+   - ⚠️ **CRITICAL**: Check "Add Python to PATH" during installation
+2. **Install MIDI Library**: Open Command Prompt as Administrator and run:
+   ```
+   pip install midiutil
+   ```
+3. **Download & Install**: Get the `.exe` installer from [Releases](https://github.com/RauliV/midi-fade-generator-electron/releases)
+4. **Launch**: Find "MIDI Fade Generator" in Start Menu
 
 ### macOS Users  
 1. **Download App**: Get the `.dmg` from [Releases](https://github.com/RauliV/midi-fade-generator-electron/releases)
