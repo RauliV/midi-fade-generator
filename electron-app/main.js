@@ -159,7 +159,33 @@ ipcMain.handle('generate-midi', async (event, data) => {
                 pythonPath = '/usr/bin/python3';
             }
         } else if (process.platform === 'win32') {
-            pythonPath = 'python';
+            // Windows: kokeile eri Python-polkuja järjestyksessä
+            const possiblePaths = [
+                'python',     // Python Launcher (suositeltu)
+                'python3',    // Jos asennettu erikseen
+                'py',         // Python Launcher vaihtoehto
+                'C:\\Python39\\python.exe',
+                'C:\\Python310\\python.exe',
+                'C:\\Python311\\python.exe',
+                'C:\\Python312\\python.exe'
+            ];
+            
+            pythonPath = 'python'; // oletusarvo
+            
+            // Kokeile löytää Python
+            for (const testPath of possiblePaths) {
+                try {
+                    const { execSync } = require('child_process');
+                    execSync(`${testPath} --version`, { stdio: 'ignore', timeout: 5000 });
+                    pythonPath = testPath;
+                    console.log('Windows - Found Python at:', pythonPath);
+                    break;
+                } catch (e) {
+                    // Jatka seuraavaan
+                }
+            }
+            
+            console.log('Windows detected, using Python command:', pythonPath);
         } else {
             pythonPath = 'python3';
         }
@@ -191,14 +217,22 @@ ipcMain.handle('generate-midi', async (event, data) => {
             
             scriptPath = path.join(workingDir, 'valot_python_backend.py');
             
+            console.log('Windows - Working directory:', workingDir);
+            console.log('Windows - Script path:', scriptPath);
+            
             // Kopioi Python-skripti jos ei ole vielä olemassa
             const bundledScriptPath = path.join(__dirname, 'valot_python_backend.py');
+            console.log('Windows - Bundled script path:', bundledScriptPath);
+            
             try {
                 await fs.access(scriptPath);
+                console.log('Windows - Script already exists at target location');
             } catch {
                 // Tiedostoa ei ole, kopioi bundlesta
+                console.log('Windows - Copying script from bundle to user directory');
                 const scriptContent = await fs.readFile(bundledScriptPath, 'utf8');
                 await fs.writeFile(scriptPath, scriptContent);
+                console.log('Windows - Script copied successfully');
             }
         } else {
             // Linux: käytä bundle-hakemistoa
@@ -239,7 +273,15 @@ ipcMain.handle('generate-midi', async (event, data) => {
         console.log('Working directory:', workingDir);
         console.log('Output directory:', outputDir);
         
+        // Windows-debugging
+        if (process.platform === 'win32') {
+            console.log('Windows - About to spawn Python process...');
+            console.log('Windows - Python command:', pythonPath);
+            console.log('Windows - Script exists?', require('fs').existsSync(scriptPath));
+        }
+        
         return new Promise((resolve, reject) => {
+            console.log('Spawning Python process with:', { pythonPath, args: [scriptPath], cwd: workingDir });
             const python = spawn(pythonPath, [scriptPath], {
                 cwd: workingDir,
                 stdio: ['pipe', 'pipe', 'pipe'],
@@ -263,7 +305,11 @@ ipcMain.handle('generate-midi', async (event, data) => {
             
             python.on('error', (error) => {
                 console.error('Python spawn error:', error);
-                reject(new Error(`Failed to spawn Python: ${error.message}`));
+                if (process.platform === 'win32' && error.code === 'ENOENT') {
+                    reject(new Error(`Python ei löytynyt Windowsista. Asenna Python osoitteesta https://python.org ja varmista että se on PATH-muuttujassa. Virhe: ${error.message}`));
+                } else {
+                    reject(new Error(`Failed to spawn Python: ${error.message}`));
+                }
             });
             
             python.on('close', (code) => {

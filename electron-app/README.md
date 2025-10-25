@@ -19,14 +19,22 @@ Beautiful Electron desktop application for generating MIDI fade-in and fade-out 
 Download the latest release from GitHub:
 1. Go to [Releases](https://github.com/RauliV/midi-fade-generator-electron/releases)
 2. Download `MIDI-Fade-Generator-Setup-1.0.0.exe`
-3. Run the installer
-4. Launch from Start Menu or Desktop
+3. **IMPORTANT**: Install Python from https://python.org if not already installed
+4. Run the installer
+5. Launch from Start Menu or Desktop
+
+**Note**: Windows version requires Python 3.7+ to be installed and available in PATH.
 
 ### For Developers
 
 ## Setup & Requirements
 
 ### Windows 10/11 Users
+**Requirements:**
+- Python 3.7+ installed from https://python.org (check "Add Python to PATH" during installation)
+- `pip install midiutil` (for MIDI generation)
+
+**Installation:**
 1. **Download & Install**: Get the `.exe` installer from [Releases](https://github.com/RauliV/midi-fade-generator-electron/releases)
 2. **Launch**: Find "MIDI Fade Generator" in Start Menu
    - ✅ **No Python Required**: MIDI generation now uses Node.js internally!
