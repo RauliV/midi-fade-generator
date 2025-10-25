@@ -75,14 +75,16 @@ ipcMain.handle('select-directory', async () => {
 // Presets-tiedoston lataus
 ipcMain.handle('load-presets', async () => {
     try {
-        // Käytä käyttäjän kotihakemistoa macOS:ssä
+        // Käytä käyttäjän kotihakemistoa kaikilla alustoilla
         const os = require('os');
         const presetsPath = process.platform === 'darwin' 
             ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
-            : path.join(__dirname, 'esitykset.json');
+            : process.platform === 'win32'
+                ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')  
+                : path.join(__dirname, 'esitykset.json');
             
-        // Varmista että hakemisto on olemassa
-        if (process.platform === 'darwin') {
+        // Varmista että hakemisto on olemassa (Windows ja macOS)
+        if (process.platform === 'darwin' || process.platform === 'win32') {
             const dir = path.dirname(presetsPath);
             await fs.mkdir(dir, { recursive: true });
         }
@@ -113,14 +115,16 @@ ipcMain.handle('save-preset', async (event, presetData) => {
             presetsData.push(presetData);
         }
         
-        // Tallenna tiedostoon - käytä käyttäjän kotihakemistoa macOS:ssä
+        // Tallenna tiedostoon - käytä käyttäjän kotihakemistoa kaikilla alustoilla
         const os = require('os');
         const presetsPath = process.platform === 'darwin' 
             ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
-            : path.join(__dirname, 'esitykset.json');
+            : process.platform === 'win32'
+                ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
+                : path.join(__dirname, 'esitykset.json');
             
-        // Varmista että hakemisto on olemassa
-        if (process.platform === 'darwin') {
+        // Varmista että hakemisto on olemassa (Windows ja macOS)
+        if (process.platform === 'darwin' || process.platform === 'win32') {
             const dir = path.dirname(presetsPath);
             await fs.mkdir(dir, { recursive: true });
         }
@@ -180,8 +184,24 @@ ipcMain.handle('generate-midi', async (event, data) => {
                 const scriptContent = await fs.readFile(bundledScriptPath, 'utf8');
                 await fs.writeFile(scriptPath, scriptContent);
             }
+        } else if (process.platform === 'win32') {
+            // Windows: käytä käyttäjän kotihakemistoa kuten macOS
+            workingDir = path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator');
+            await fs.mkdir(workingDir, { recursive: true });
+            
+            scriptPath = path.join(workingDir, 'valot_python_backend.py');
+            
+            // Kopioi Python-skripti jos ei ole vielä olemassa
+            const bundledScriptPath = path.join(__dirname, 'valot_python_backend.py');
+            try {
+                await fs.access(scriptPath);
+            } catch {
+                // Tiedostoa ei ole, kopioi bundlesta
+                const scriptContent = await fs.readFile(bundledScriptPath, 'utf8');
+                await fs.writeFile(scriptPath, scriptContent);
+            }
         } else {
-            // Windows: käytä bundle-hakemistoa
+            // Linux: käytä bundle-hakemistoa
             workingDir = __dirname;
             scriptPath = path.join(__dirname, 'valot_python_backend.py');
         }
@@ -194,10 +214,19 @@ ipcMain.handle('generate-midi', async (event, data) => {
             outputDir = data.outputDir;
             console.log('Using user-selected directory:', outputDir);
         } else {
-            // Käytä web-version kaltaista oletushakemistoa
-            const originalProjectDir = '/Users/raulivirtanen/Documents/valot';
-            outputDir = path.join(originalProjectDir, 'generated_midi');
-            console.log('Using web-version compatible default directory:', outputDir);
+            // Käytä alustapohjaista oletushakemistoa
+            if (process.platform === 'darwin') {
+                // macOS: alkuperäinen kehityspolku
+                const originalProjectDir = '/Users/raulivirtanen/Documents/valot';
+                outputDir = path.join(originalProjectDir, 'generated_midi');
+            } else if (process.platform === 'win32') {
+                // Windows: käyttäjän Documents-hakemisto
+                outputDir = path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'generated_midi');
+            } else {
+                // Linux: paikallinen hakemisto
+                outputDir = path.join(__dirname, 'generated_midi');
+            }
+            console.log('Using platform-specific default directory:', outputDir);
         }
         
         await fs.mkdir(outputDir, { recursive: true });
