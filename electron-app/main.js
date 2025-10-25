@@ -33,6 +33,12 @@ function createWindow() {
     // Lataa HTML-tiedosto
     mainWindow.loadFile('index.html');
 
+    // Varmista että sovellus sammuu kun ikkuna suljetaan
+    mainWindow.on('closed', () => {
+        mainWindow = null;
+        app.quit(); // Pakota sovellus sammumaan
+    });
+
     // Kehitystyökalut kehitystilassa
     if (isDev) {
         mainWindow.webContents.openDevTools();
@@ -42,18 +48,16 @@ function createWindow() {
 // App ready
 app.whenReady().then(createWindow);
 
-// Sulje sovellus kun kaikki ikkunat suljettu (paitsi macOS)
+// Sulje sovellus kun kaikki ikkunat suljettu
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
+    // Sammuta aina, myös macOS:ssa
+    app.quit();
 });
 
-// macOS: luo ikkuna jos ei ole ja app aktivoituu
+// Estä sovellusta avautumasta uudestaan macOS:ssa
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-    }
+    // macOS:ssa älä luo uutta ikkunaa automaattisesti
+    // Käyttäjän on käynnistettävä sovellus uudestaan
 });
 
 // Hakemistovalinta
