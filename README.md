@@ -1,26 +1,38 @@
-# 🎵 MIDI Fade Generator - Electron Desktop App
+# 🎵 MIDI Fade Generator - Cross-Platform Desktop App
 
-Beautiful Electron desktop application for generating MIDI fade-in and fade-out files for lighting control systems. Optimized for Windows 10 with native file dialogs and desktop integration.
+Beautiful Electron desktop application for generating MIDI fade-in and fade-out files for lighting control systems. Available for Windows 10/11 and macOS (Intel & Apple Silicon).
 
-![MIDI Fade Generator](nuotti.jpg)
+![MIDI Fade Generator](assets/icon.png)
 
 ## Features
 
-🖥️ **Native Desktop App**: Standalone Windows application, no browser needed  
-📁 **Native File Dialogs**: Browse directories with Windows file explorer  
+🖥️ **Native Desktop App**: Standalone application for Windows and macOS  
+📁 **Native File Dialogs**: Browse directories with system file explorer  
 💾 **Local Data Storage**: Presets saved locally on your computer  
 🎭 **Full Scene Management**: All web version features included  
 ⚡ **Offline Operation**: No internet connection required  
-🎯 **Windows 10 Optimized**: Built specifically for Windows desktop use  
+� **Cross-Platform**: Windows .exe and macOS .dmg installers  
+🎯 **No Dependencies**: Everything included, no Python or external libraries needed  
 
 ## Download & Installation
 
+### Ready-to-Use Installers
+Download from the `/dist` folder or create a GitHub release:
+
+**Windows 10/11:**
+- `MIDI Fade Generator Setup 1.0.0.exe` (91 MB)
+- Includes installer and automatic desktop shortcuts
+
+**macOS:**
+- `MIDI Fade Generator-1.0.0.dmg` (111 MB) - Intel Macs
+- `MIDI Fade Generator-1.0.0-arm64.dmg` (106 MB) - Apple Silicon Macs
+- Drag & drop installation to Applications folder
+
 ### For End Users
-Download the latest release from GitHub:
-1. Go to [Releases](https://github.com/RauliV/midi-fade-generator-electron/releases)
-2. Download `MIDI-Fade-Generator-Setup-1.0.0.exe`
-3. Run the installer
-4. Launch from Start Menu or Desktop
+1. Download the appropriate installer for your system
+2. **Windows**: Run the `.exe` installer and follow prompts
+3. **macOS**: Open the `.dmg` file and drag to Applications
+4. Launch from Start Menu (Windows) or Applications folder (macOS)
 
 ### For Developers
 
@@ -39,14 +51,62 @@ Download the latest release from GitHub:
 ### Developer Setup
 Prerequisites:
 - **Node.js** (v16 or later)
-- **Python 3.8+** with midiutil library
 - **Git**
 
+**Note**: Python is no longer required! MIDI generation now uses Node.js with the `jsmidgen` library.
+
 ```bash
-git clone https://github.com/RauliV/midi-fade-generator-electron.git
-cd midi-fade-generator-electron
+git clone https://github.com/RauliV/midi-fade-generator.git
+cd midi-fade-generator
 npm install
 ```
+
+## Building Desktop Applications
+
+### Windows Build
+```bash
+npm run build-win
+```
+Creates: `dist/MIDI Fade Generator Setup 1.0.0.exe`
+
+### macOS Build  
+```bash
+npm run build-mac
+```
+Creates: 
+- `dist/MIDI Fade Generator-1.0.0.dmg` (Intel)
+- `dist/MIDI Fade Generator-1.0.0-arm64.dmg` (Apple Silicon)
+
+### Development Mode
+```bash
+npm start
+```
+
+## Creating GitHub Release
+
+1. **Ensure builds are complete**:
+   ```bash
+   npm run build-win
+   npm run build-mac
+   ```
+
+2. **Create release on GitHub**:
+   - Go to repository → Releases → "Create a new release"
+   - Tag: `v1.0.0`
+   - Title: `MIDI Fade Generator v1.0.0 - Cross-Platform Desktop App`
+   - Upload files from `dist/` folder:
+     - `MIDI Fade Generator Setup 1.0.0.exe`
+     - `MIDI Fade Generator-1.0.0.dmg`
+     - `MIDI Fade Generator-1.0.0-arm64.dmg`
+
+## Technical Details
+
+### Architecture
+- **Frontend**: HTML5/CSS3/JavaScript with neon purple theme
+- **Backend**: Node.js with Electron framework
+- **MIDI Generation**: `jsmidgen` library (replaces Python dependency)
+- **File System**: Native file dialogs and local storage
+- **Packaging**: `electron-builder` for cross-platform builds
 
 Development commands:
 ```bash
