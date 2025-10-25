@@ -1,40 +1,26 @@
-# 🎵 MIDI Fade Generator - Cross-Platform Desktop App
+# 🎵 MIDI Fade Generator - Electron Desktop App
 
-Beautiful Electron desktop application for generating MIDI fade-in and fade-out files for lighting control systems. Available for Windows 10/11 and macOS (Intel & Apple Silicon).
+Beautiful Electron desktop application for generating MIDI fade-in and fade-out files for lighting control systems. Optimized for Windows 10 with native file dialogs and desktop integration.
 
-![MIDI Fade Generator](assets/icon.png)
+![MIDI Fade Generator](nuotti.jpg)
 
 ## Features
 
-🖥️ **Native Desktop App**: Standalone application for Windows and macOS  
-📁 **Native File Dialogs**: Browse directories with system file explorer  
+🖥️ **Native Desktop App**: Standalone Windows application, no browser needed  
+📁 **Native File Dialogs**: Browse directories with Windows file explorer  
 💾 **Local Data Storage**: Presets saved locally on your computer  
 🎭 **Full Scene Management**: All web version features included  
 ⚡ **Offline Operation**: No internet connection required  
-� **Cross-Platform**: Windows .exe and macOS .dmg installers  
-🎯 **No Dependencies**: Everything included, no Python or external libraries needed  
+🎯 **Windows 10 Optimized**: Built specifically for Windows desktop use  
 
 ## Download & Installation
 
-### Ready-to-Use Installers
-Download from the `/dist` folder or create a GitHub release:
-
-**Windows 10/11:**
-- `MIDI Fade Generator Setup 1.0.0.exe` (97 MB)
-- Includes installer and automatic desktop shortcuts
-
-**macOS:**
-- `MIDI Fade Generator-1.0.0.dmg` (116 MB) - Intel Macs
-- `MIDI Fade Generator-1.0.0-arm64.dmg` (111 MB) - Apple Silicon Macs
-- Drag & drop installation to Applications folder
-
-**Updated:** Kaikki versiot nyt korjatuilla ikoneilla!
-
 ### For End Users
-1. Download the appropriate installer for your system
-2. **Windows**: Run the `.exe` installer and follow prompts
-3. **macOS**: Open the `.dmg` file and drag to Applications
-4. Launch from Start Menu (Windows) or Applications folder (macOS)
+Download the latest release from GitHub:
+1. Go to [Releases](https://github.com/RauliV/midi-fade-generator-electron/releases)
+2. Download `MIDI-Fade-Generator-Setup-1.0.0.exe`
+3. Run the installer
+4. Launch from Start Menu or Desktop
 
 ### For Developers
 
@@ -53,80 +39,20 @@ Download from the `/dist` folder or create a GitHub release:
 ### Developer Setup
 Prerequisites:
 - **Node.js** (v16 or later)
+- **Python 3.8+** with midiutil library
 - **Git**
 
-**Note**: Python is no longer required! MIDI generation now uses Node.js with the `jsmidgen` library.
+**Note**: Python with midiutil is required for reliable MIDI generation that works with Logic Pro and other professional audio software.
 
 ```bash
 git clone https://github.com/RauliV/midi-fade-generator.git
 cd midi-fade-generator
+
+# Install Python dependencies
+pip3 install midiutil
+
+# Install Node.js dependencies
 npm install
-```
-
-## Building Desktop Applications
-
-### Windows Build
-```bash
-npm run build-win
-```
-Creates: `dist/MIDI Fade Generator Setup 1.0.0.exe`
-
-### macOS Build  
-```bash
-npm run build-mac
-```
-Creates: 
-- `dist/MIDI Fade Generator-1.0.0.dmg` (Intel)
-- `dist/MIDI Fade Generator-1.0.0-arm64.dmg` (Apple Silicon)
-
-### Development Mode
-```bash
-npm start
-```
-
-## Creating GitHub Release
-
-1. **Ensure builds are complete**:
-   ```bash
-   npm run build-win
-   npm run build-mac
-   ```
-
-2. **Create release on GitHub**:
-   - Go to repository → Releases → "Create a new release"
-   - Tag: `v1.0.0`
-   - Title: `MIDI Fade Generator v1.0.0 - Cross-Platform Desktop App`
-   - Upload files from `dist/` folder:
-     - `MIDI Fade Generator Setup 1.0.0.exe`
-     - `MIDI Fade Generator-1.0.0.dmg`
-     - `MIDI Fade Generator-1.0.0-arm64.dmg`
-
-## Technical Details
-
-### Architecture
-- **Frontend**: HTML5/CSS3/JavaScript with neon purple theme
-- **Backend**: Node.js with Electron framework
-- **MIDI Generation**: Python midiutil library (Logic Pro compatible)
-- **File System**: Native file dialogs and local storage
-- **Packaging**: `electron-builder` for cross-platform builds
-
-### Project Structure
-```
-midi-fade-generator/
-├── index.html              # Web version
-├── valot_server.py         # Web server
-├── valot_python_backend.py # MIDI generation
-├── electron-app/           # Desktop application
-│   ├── main.js             # Electron main process
-│   ├── preload.js          # Secure IPC bridge
-│   ├── index.html          # Desktop UI
-│   ├── package.json        # Build configuration
-│   ├── valot_python_backend.py # MIDI backend
-│   └── assets/             # Icons and resources
-│       ├── icon.png
-│       ├── icon.icns       # macOS
-│       └── icon.ico        # Windows
-└── generated_midi/         # Output folder
 ```
 
 Development commands:
