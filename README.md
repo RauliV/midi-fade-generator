@@ -19,7 +19,7 @@ A beautiful, neon-themed web application for generating MIDI fade-in and fade-ou
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/midi-fade-generator.git
+   git clone https://github.com/RauliV/midi-fade-generator.git
    cd midi-fade-generator
    ```
 
