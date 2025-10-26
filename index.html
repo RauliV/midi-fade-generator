@@ -64,7 +64,7 @@
                         </div>
                         <!-- Polun esikatselu -->
                         <div id="pathPreview" style="padding: 4px 8px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(120, 219, 255, 0.3); border-radius: 5px; color: #78dbff; font-size: 10px; width: 400px;">
-                            <strong>📁</strong> <span id="previewPath">/Users/raulivirtanen/Documents/valot/generated_midi</span>
+                            <strong>📁</strong> <span id="previewPath">generated_midi</span>
                         </div>
                     </div>
                     <!-- Oikea puoli: Askeleet ja nappi päällekkäin -->
@@ -881,7 +881,7 @@
             }
         }
 
-        function updatePathPreview() {
+        async function updatePathPreview() {
             const outputDir = document.getElementById('outputDir').value.trim();
             const previewPath = document.getElementById('previewPath');
             
@@ -890,13 +890,35 @@
                 previewPath.textContent = outputDir;
             } else if (outputDir.startsWith('~/')) {
                 // Kotihakemisto
-                previewPath.textContent = outputDir.replace('~', '/Users/raulivirtanen');
+                if (window.electronAPI) {
+                    previewPath.textContent = outputDir.replace('~', (navigator.platform === 'Win32' ? 'C:\\Users\\User' : '/Users/user'));
+                } else {
+                    previewPath.textContent = outputDir.replace('~', '/Users/user');
+                }
             } else if (outputDir === '') {
-                // Tyhjä -> oletus
-                previewPath.textContent = '/Users/raulivirtanen/Documents/valot/generated_midi';
+                // Tyhjä -> oletus - hae dynaaminen appPath
+                if (window.electronAPI && window.electronAPI.getAppPath) {
+                    try {
+                        const appPath = await window.electronAPI.getAppPath();
+                        previewPath.textContent = appPath + '/generated_midi';
+                    } catch (e) {
+                        previewPath.textContent = 'generated_midi';
+                    }
+                } else {
+                    previewPath.textContent = 'generated_midi';
+                }
             } else {
-                // Suhteellinen polku
-                previewPath.textContent = `/Users/raulivirtanen/Documents/valot/${outputDir}`;
+                // Suhteellinen polku - hae dynaaminen appPath
+                if (window.electronAPI && window.electronAPI.getAppPath) {
+                    try {
+                        const appPath = await window.electronAPI.getAppPath();
+                        previewPath.textContent = `${appPath}/${outputDir}`;
+                    } catch (e) {
+                        previewPath.textContent = outputDir;
+                    }
+                } else {
+                    previewPath.textContent = outputDir;
+                }
             }
         }
 
@@ -905,27 +927,14 @@
                 try {
                     const selectedPath = await window.electronAPI.selectDirectory();
                     if (selectedPath) {
-                        // Korjaa Windows-ongelma: käytä aina suhteellista polkua jos mahdollista
-                        let outputPath = selectedPath;
-                        
-                        // Jos valittu hakemisto on sovelluksen hakemiston sisällä, käytä suhteellista polkua
-                        if (window.electronAPI.getAppPath) {
-                            try {
-                                const appPath = await window.electronAPI.getAppPath();
-                                if (selectedPath.startsWith(appPath)) {
-                                    outputPath = selectedPath.replace(appPath + '/', '').replace(appPath + '\\', '');
-                                    console.log('Using relative path:', outputPath);
-                                }
-                            } catch (e) {
-                                console.log('Could not get app path, using absolute path');
-                            }
-                        }
+                        // Käytä valittua polkua sellaisenaan - ei tehdä suhteelliseksi
+                        console.log('Selected absolute path:', selectedPath);
                         
                         // Aseta polku kokonaan (ei lisää olemassa olevan perään)
-                        document.getElementById('outputDir').value = outputPath;
+                        document.getElementById('outputDir').value = selectedPath;
                         updatePathPreview();
                         markAsUnsaved();
-                        showStatus(`Hakemisto valittu: ${outputPath}`, 'success');
+                        showStatus(`Hakemisto valittu: ${selectedPath}`, 'success');
                     }
                 } catch (error) {
                     console.error('Virhe hakemistovalinnassa:', error);
