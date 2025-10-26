@@ -4,465 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MIDI Fade-in/out Generaattori (Python Backend)</title>
-    <style>
-        /* Offline-yhteensopiva fontti ilman Google Fonts riippuvuutta */
-        body {
-            font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;
-            background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #000033 100%);
-            background-image: 
-                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.2) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.2) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%);
-            color: #ffffff;
-            margin: 0;
-            padding: 15px;
-            min-height: 100vh;
-            overflow-x: auto;
-            position: relative;
-        }
-
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(45deg, 
-                transparent 49%, 
-                rgba(120, 219, 255, 0.05) 50%, 
-                transparent 51%);
-            background-size: 60px 60px;
-            animation: matrix 20s linear infinite;
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        @keyframes matrix {
-            0% { transform: translateX(0) translateY(0); }
-            100% { transform: translateX(60px) translateY(60px); }
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 0 30px rgba(120, 219, 255, 0.3);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(120, 219, 255, 0.2);
-        }
-
-        h1 {
-            text-align: center;
-            color: #78dbff;
-            text-shadow: 0 0 10px rgba(120, 219, 255, 0.5);
-            margin-bottom: 30px;
-            font-weight: 900;
-            letter-spacing: 2px;
-        }
-
-        .scene-container {
-            background: linear-gradient(135deg, rgba(51, 0, 102, 0.3) 0%, rgba(26, 0, 51, 0.5) 100%);
-            border: 1px solid rgba(120, 219, 255, 0.3);
-            border-radius: 8px;
-            padding: 8px;
-            margin: 8px 0;
-            backdrop-filter: blur(5px);
-            box-shadow: 0 2px 10px rgba(138, 43, 226, 0.2);
-        }        .scene-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 8px;
-            gap: 8px;
-        }
-
-        .scene-name {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(120, 219, 255, 0.5);
-            border-radius: 5px;
-            padding: 6px 10px;
-            color: #78dbff;
-            font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;
-            font-size: 14px;
-        }
-
-        .fade-container {
-            display: flex;
-            gap: 15px;
-            margin: 6px 0;
-            align-items: center;
-        }
-
-        .fade-input {
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(120, 219, 255, 0.5);
-            border-radius: 5px;
-            padding: 6px;
-            color: #78dbff;
-            width: 70px;
-            text-align: center;
-            font-size: 13px;
-        }
-
-        .channel-container {
-            margin: 8px 0;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .channel-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 4px 0;
-            flex-wrap: nowrap;
-        }
-
-        .channel-input, .velocity-input {
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(120, 219, 255, 0.5);
-            border-radius: 5px;
-            padding: 6px;
-            color: #78dbff;
-            width: 50px;
-            text-align: center;
-            font-size: 13px;
-        }
-
-        .button {
-            background: linear-gradient(45deg, #330066, #78dbff);
-            border: none;
-            border-radius: 8px;
-            color: white;
-            padding: 10px 20px;
-            font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-        }
-
-        .button:hover {
-            background: linear-gradient(45deg, #78dbff, #330066);
-            box-shadow: 0 0 15px rgba(120, 219, 255, 0.5);
-            transform: translateY(-2px);
-        }
-
-        .remove-button {
-            background: linear-gradient(45deg, #660033, #ff4466);
-            padding: 4px 8px;
-            font-size: 11px;
-        }
-
-        .remove-button:hover {
-            background: linear-gradient(45deg, #ff4466, #660033);
-        }
-
-        .section-header {
-            margin: 20px 0 12px 0;
-            padding: 10px 20px;
-            background: linear-gradient(135deg, rgba(51, 0, 102, 0.8) 0%, rgba(120, 219, 255, 0.3) 100%);
-            border: 2px solid rgba(120, 219, 255, 0.6);
-            border-radius: 12px;
-            backdrop-filter: blur(15px);
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .section-header h2 {
-            margin: 0;
-            color: #ffffff;
-            font-size: 16px;
-            font-weight: bold;
-            text-shadow: 0 0 8px rgba(120, 219, 255, 0.6);
-            letter-spacing: 1px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .controls {
-            display: flex;
-            gap: 15px;
-            margin: 15px 0;
-            align-items: center;
-            flex-wrap: wrap;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 12px;
-            border-radius: 10px;
-            border: 2px solid rgba(120, 219, 255, 0.5);
-            box-shadow: 0 0 20px rgba(120, 219, 255, 0.3);
-            backdrop-filter: blur(10px);
-        }
-
-        .scenes-container {
-            max-height: 350px;
-            overflow-y: auto;
-            border: 2px solid rgba(120, 219, 255, 0.3);
-            border-radius: 10px;
-            border-top-left-radius: 0;
-            border-top-right-radius: 0;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 8px;
-            margin: 0 0 15px 0;
-        }
-
-        .scenes-container::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .scenes-container::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 4px;
-        }
-
-        .scenes-container::-webkit-scrollbar-thumb {
-            background: linear-gradient(45deg, #330066, #78dbff);
-            border-radius: 4px;
-        }
-
-        .scenes-container::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(45deg, #78dbff, #330066);
-        }
-
-        .controls-top {
-            position: static;
-            background: rgba(51, 0, 102, 0.2);
-            border: 1px solid rgba(120, 219, 255, 0.3);
-            margin-bottom: 30px;
-        }
-
-        .status-area {
-            position: static;
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid rgba(120, 219, 255, 0.3);
-            border-radius: 10px;
-            padding: 12px;
-            margin: 15px 0;
-            min-height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .status-message {
-            font-size: 16px;
-            color: #78dbff;
-            font-weight: bold;
-            text-shadow: 0 0 5px rgba(120, 219, 255, 0.5);
-            text-align: center;
-        }
-
-        .steps-control {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        #stepsNum {
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(120, 219, 255, 0.5);
-            border-radius: 5px;
-            padding: 8px;
-            color: #78dbff;
-            width: 60px;
-            text-align: center;
-        }
-
-        #downloadLinks {
-            position: sticky;
-            bottom: 120px;
-            margin-top: 30px;
-            margin-bottom: 150px;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.9);
-            border-radius: 10px;
-            border: 2px solid rgba(0, 255, 0, 0.5);
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
-            backdrop-filter: blur(10px);
-            z-index: 999;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        #downloadLinks h2 {
-            color: #78dbff;
-            margin-bottom: 15px;
-        }
-
-        #downloadLinks a {
-            color: #78dbff;
-            text-decoration: none;
-            border-bottom: 1px solid transparent;
-            transition: border-color 0.3s ease;
-        }
-
-        #downloadLinks a:hover {
-            border-bottom-color: #78dbff;
-        }
-
-        .status-message {
-            margin: 10px 0;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: bold;
-            animation: slideInUp 0.3s ease-out;
-        }
-
-        @keyframes slideInUp {
-            from {
-                transform: translateY(20px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        /* Parannettu responsiivisuus */
-                @media (max-width: 768px) {
-            .scenes-container {
-                max-height: 300px;
-            }
-            
-            .scene-container {
-                margin: 10px 0;
-                padding: 15px;
-                border-radius: 15px 15px 0 0;
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            #downloadLinks {
-                margin-left: 10px;
-                margin-right: 10px;
-            }
-            
-            .fade-container {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .channel-row {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 5px;
-            }
-            
-            .controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .steps-control {
-                justify-content: center;
-            }
-        }
-
-        .status-success {
-            background: rgba(0, 255, 0, 0.2);
-            border: 1px solid rgba(0, 255, 0, 0.5);
-            color: #00ff00;
-        }
-
-        .status-error {
-            background: rgba(255, 0, 0, 0.2);
-            border: 1px solid rgba(255, 0, 0, 0.5);
-            color: #ff4444;
-        }
-
-        .status-info {
-            background: rgba(255, 255, 0, 0.2);
-            border: 1px solid rgba(255, 255, 0, 0.5);
-            color: #ffff00;
-        }
-
-        label {
-            color: #78dbff;
-            font-weight: bold;
-            margin-right: 6px;
-            font-size: 13px;
-        }
-
-        /* Neon-nuotti yläosaan */
-        .header-logo {
-            text-align: center;
-            margin-bottom: 20px;
-            position: relative;
-        }
-
-        .music-note-neon {
-            width: 120px;
-            height: 120px;
-            margin: 15px auto;
-            border-radius: 50%;
-            filter: drop-shadow(0 0 10px #00f5ff) drop-shadow(0 0 20px #ff006e) drop-shadow(0 0 30px #8338ec);
-            animation: neonPulse 3s ease-in-out infinite alternate;
-            object-fit: cover;
-        }
-
-        @keyframes neonPulse {
-            0% { 
-                filter: drop-shadow(0 0 5px #00f5ff) drop-shadow(0 0 10px #ff006e) drop-shadow(0 0 15px #8338ec);
-                transform: scale(1);
-            }
-            100% { 
-                filter: drop-shadow(0 0 15px #00f5ff) drop-shadow(0 0 25px #ff006e) drop-shadow(0 0 35px #8338ec);
-                transform: scale(1.05);
-            }
-        }
-
-        @keyframes statusFadeIn {
-            0% { 
-                opacity: 0; 
-                transform: scale(0.8) translateY(-20px); 
-            }
-            100% { 
-                opacity: 1; 
-                transform: scale(1) translateY(0); 
-            }
-        }
-
-        @keyframes statusFadeOut {
-            0% { 
-                opacity: 1; 
-                transform: scale(1) translateY(0); 
-            }
-            100% { 
-                opacity: 0; 
-                transform: scale(0.8) translateY(-20px); 
-            }
-        }
-
-        /* Status modal responsiivisuus */
-        @media (max-width: 768px) {
-            #statusContent {
-                margin: 10px !important;
-                padding: 15px 20px !important;
-                max-width: 95% !important;
-            }
-            #statusMessage {
-                font-size: 14px !important;
-                line-height: 1.3 !important;
-            }
-        }
-
-        @media (max-width: 480px) {
-            #statusContent {
-                margin: 5px !important;
-                padding: 12px 15px !important;
-                max-width: 98% !important;
-            }
-            #statusMessage {
-                font-size: 13px !important;
-                line-height: 1.2 !important;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
@@ -490,9 +32,15 @@
             <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 3; padding-top: 50px;">
                 <!-- Tallenna/Lataa kontrollit -->
                 <div style="display: flex; gap: 12px; align-items: center;">
-                    <input type="text" id="presetName" placeholder="Esityksen nimi" style="flex: 1; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;">
-                    <button class="button" onclick="savePreset()">💾 Tallenna esitys</button>
-                    <button class="button" onclick="loadPresetsDialog()">📂 Lataa esitys</button>
+                    <input type="text" id="presetName" placeholder="Esityksen nimi" oninput="markAsUnsaved()" style="flex: 1; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;">
+                    
+                    <!-- 2x2 Esityshallinta napit - looginen järjestys -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-width: 320px;">
+                        <button class="button" onclick="savePreset()" style="font-size: 14px; padding: 8px 12px;">💾 Tallenna esitys</button>
+                        <button class="button" onclick="loadPresetsDialog()" style="font-size: 14px; padding: 8px 12px;">� Lataa esitys</button>
+                        <button class="button" onclick="newPreset()" style="font-size: 14px; padding: 8px 12px;">✨ Uusi esitys</button>
+                        <button class="button" onclick="deletePreset()" style="font-size: 14px; padding: 8px 12px; background: linear-gradient(45deg, #660033, #ff4466);">🗑️ Poista esitys</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -511,8 +59,7 @@
                     <div style="display: flex; flex-direction: column; gap: 6px;">
                         <div class="steps-control">
                             <label for="outputDir">Tallennushakemisto:</label>
-                            <input type="text" id="outputDir" value="generated_midi" placeholder="Esim: midifiles tai /Users/user/Documents/MIDI" style="background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace; width: 200px;" oninput="updatePathPreview()">
-                            <button class="button" onclick="showDirectoryHelp()" style="margin-left: 5px; padding: 6px 10px; font-size: 12px;">ℹ️</button>
+                            <input type="text" id="outputDir" value="generated_midi" placeholder="Esim: midifiles tai /Users/user/Documents/MIDI" style="background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace; width: 200px;" oninput="updatePathPreview(); markAsUnsaved()">>
                             <button class="button" onclick="selectDirectory()" style="margin-left: 5px; padding: 6px 10px; font-size: 12px;">📁</button>
                         </div>
                         <!-- Polun esikatselu -->
@@ -524,19 +71,12 @@
                     <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
                         <div class="steps-control">
                             <label for="stepsNum">Himmennyksen askeleet:</label>
-                            <input type="number" id="stepsNum" value="20" min="5" max="100">
+                            <input type="number" id="stepsNum" value="20" min="5" max="100" oninput="markAsUnsaved()">
                         </div>
                         <button class="button" onclick="generateMIDIs()" id="generateButton">🎵 Generoi MIDI-tiedostot</button>
                     </div>
                 </div>
                 <!-- Polun ohje -->
-                <div id="directoryHelp" style="padding: 8px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.4); border-radius: 6px; color: #78dbff; font-size: 11px; display: none;">
-                    <strong>📁 Tallennushakemiston ohje:</strong><br>
-                    • <strong>Suhteellinen polku:</strong> <code>midifiles</code> → tallentaa projektihakemistoon<br>
-                    • <strong>Absoluuttinen polku:</strong> <code>/Users/nimi/Documents/MIDI</code> → tallentaa tuohon sijaintiin<br>
-                    • <strong>Kotihakemisto:</strong> <code>~/Desktop/midifiles</code> → tallentaa työpöydälle<br>
-                    • Hakemisto luodaan automaattisesti jos sitä ei ole olemassa
-                </div>
             </div>
         </div>
 
@@ -577,16 +117,139 @@
 
     <script>
         let sceneCounter = 0;
+        let hasUnsavedChanges = false;
+        let currentPresetName = '';
 
-        function showDirectoryHelp() {
-            const helpDiv = document.getElementById('directoryHelp');
-            if (helpDiv.style.display === 'none' || helpDiv.style.display === '') {
-                helpDiv.style.display = 'block';
-                setTimeout(() => {
-                    helpDiv.style.display = 'none';
-                }, 8000); // Piilota 8 sekunnin kuluttua
-            } else {
-                helpDiv.style.display = 'none';
+        // Merkitse muutokset tallennettuina
+        function markAsSaved() {
+            hasUnsavedChanges = false;
+            updateWindowTitle();
+        }
+
+        // Merkitse muutokset tallentamattomina
+        function markAsUnsaved() {
+            hasUnsavedChanges = true;
+            updateWindowTitle();
+        }
+
+        // Päivitä ikkunan otsikko näyttämään tallennuksen tila
+        function updateWindowTitle() {
+            const title = currentPresetName 
+                ? `🎵 MIDI Fade Generator - ${currentPresetName}${hasUnsavedChanges ? ' *' : ''}`
+                : `🎵 MIDI Fade Generator${hasUnsavedChanges ? ' *' : ''}`;
+            document.title = title;
+        }
+
+        // Tarkista tallentamattomat muutokset ja kysy varmistus
+        async function checkUnsavedChanges(actionDescription = 'jatkaa') {
+            if (!hasUnsavedChanges) {
+                return true; // Ei tallentamattomia muutoksia
+            }
+
+            try {
+                const choice = await showTripleConfirmDialog(
+                    'Tallentamattomia muutoksia',
+                    `Sinulla on tallentamattomia muutoksia. Mitä haluat tehdä ennen kun ${actionDescription}?`,
+                    'Tallenna',
+                    `Jatka tallentamatta`,
+                    'Peruuta'
+                );
+                
+                if (choice === 'save') {
+                    await savePreset();
+                    return true;
+                } else if (choice === 'discard') {
+                    return true;
+                } else {
+                    return false; // Peruuta
+                }
+            } catch (error) {
+                console.error('Error with confirm dialog:', error);
+                // Fallback tavalliseen confirm-dialogiin
+                return confirm(`Sinulla on tallentamattomia muutoksia.\n\nHaluatko ${actionDescription} menettämällä ne?`);
+            }
+        }
+
+        // Uusi esitys -funktio
+        async function newPreset() {
+            const canContinue = await checkUnsavedChanges('luoda uuden esityksen');
+            if (!canContinue) {
+                return;
+            }
+
+            // Tyhjennä kaikki kentät
+            document.getElementById('presetName').value = '';
+            currentPresetName = '';
+            
+            // Päivitä näkyvä otsikko
+            document.getElementById('currentPresetName').textContent = 'Uusi esitys';
+            
+            // Poista kaikki kohtaukset
+            const scenesDiv = document.getElementById('scenes');
+            scenesDiv.innerHTML = '';
+            sceneCounter = 0;
+            
+            // Lisää yksi tyhjä kohtaus
+            addNewScene();
+            
+            // Nollaa tallennuksen tila
+            markAsSaved();
+            
+            showStatus('✨ Uusi esitys aloitettu', 'success');
+        }
+
+        // Poista esitys -funktio
+        async function deletePreset() {
+            const presetName = document.getElementById('presetName').value.trim();
+            if (!presetName) {
+                showStatus('⚠️ Anna poistettavan esityksen nimi!', 'error');
+                return;
+            }
+
+            try {
+                const confirmDelete = await showConfirmDialog(
+                    'Poista esitys',
+                    `Haluatko varmasti poistaa esityksen "${presetName}"?\n\nTätä toimintoa ei voi peruuttaa.`,
+                    'Poista pysyvästi',
+                    'Peruuta'
+                );
+
+                if (!confirmDelete) {
+                    return;
+                }
+
+                if (window.electronAPI && window.electronAPI.deletePreset) {
+                    // Electron versio
+                    const result = await window.electronAPI.deletePreset(presetName);
+                    if (!result.success) {
+                        throw new Error(result.error || 'Poisto epäonnistui');
+                    }
+                } else {
+                    // Node.js versio - poista localStorage:sta
+                    const savedPresets = localStorage.getItem('midi_fade_presets');
+                    if (savedPresets) {
+                        const presets = JSON.parse(savedPresets);
+                        if (presets[presetName]) {
+                            delete presets[presetName];
+                            localStorage.setItem('midi_fade_presets', JSON.stringify(presets));
+                        } else {
+                            throw new Error('Esitystä ei löydy');
+                        }
+                    } else {
+                        throw new Error('Ei tallennettuja esityksiä');
+                    }
+                }
+                
+                showStatus(`Esitys "${presetName}" poistettu onnistuneesti!`, 'success');
+                
+                // Jos poistettu esitys on tällä hetkellä aktiivinen, aloita uusi
+                if (currentPresetName === presetName) {
+                    newPreset();
+                }
+
+            } catch (error) {
+                console.error('Delete error:', error);
+                showStatus(`Virhe poistossa: ${error.message}`, 'error');
             }
         }
 
@@ -634,29 +297,32 @@
             sceneDiv.innerHTML = `
                 <div class="scene-header">
                     <span style="color: #ff6b9d; font-weight: bold; font-size: 16px; margin-right: 8px;">#${sceneCounter}</span>
-                    <input type="text" class="scene-name" placeholder="Kohtauksen nimi" required>
+                    <input type="text" class="scene-name" placeholder="Kohtauksen nimi" required oninput="markAsUnsaved()">
                     <button class="button remove-button" onclick="removeScene(this)">🗑️ Poista</button>
                 </div>
                 
                 <div class="fade-container">
                     <label>Fade-in kesto (s):</label>
-                    <input type="number" class="fade-input" value="1.0" step="0.1" min="0.1">
+                    <input type="number" class="fade-input" value="1.0" step="0.1" min="0.1" oninput="markAsUnsaved()">
                     <label>Fade-out kesto (s):</label>
-                    <input type="number" class="fade-input" value="1.0" step="0.1" min="0.1">
+                    <input type="number" class="fade-input" value="1.0" step="0.1" min="0.1" oninput="markAsUnsaved()">
                 </div>
                 
                 <div class="channel-container">
                     <div class="channel-row">
                         <label>Kanava:</label>
-                        <input type="number" class="channel-input" value="1" min="1" max="100">
+                        <input type="number" class="channel-input" value="1" min="1" max="100" oninput="markAsUnsaved()">
                         <label>Arvo (0-127):</label>
-                        <input type="number" class="velocity-input" value="127" min="0" max="127">
+                        <input type="number" class="velocity-input" value="127" min="0" max="127" oninput="markAsUnsaved()">
                         <button class="button remove-button" onclick="removeChannel(this)">❌</button>
                     </div>
                     <button class="button" onclick="addChannel(this)" style="margin-top: 6px; font-size: 12px; padding: 4px 8px;">➕ Lisää kanava</button>
                 </div>
             `;
             scenesDiv.appendChild(sceneDiv);
+            
+            // Merkitse muutokset
+            markAsUnsaved();
             
             // Skrollaa uuteen kohtaukseen
             setTimeout(() => {
@@ -675,6 +341,7 @@
         function removeScene(button) {
             button.closest('.scene-container').remove();
             renumberScenes();
+            markAsUnsaved();
         }
 
         function renumberScenes() {
@@ -694,16 +361,18 @@
             newChannelRow.className = 'channel-row';
             newChannelRow.innerHTML = `
                 <label>Kanava:</label>
-                <input type="number" class="channel-input" value="1" min="1" max="100">
+                <input type="number" class="channel-input" value="1" min="1" max="100" oninput="markAsUnsaved()">
                 <label>Arvo (0-127):</label>
-                <input type="number" class="velocity-input" value="127" min="0" max="127">
+                <input type="number" class="velocity-input" value="127" min="0" max="127" oninput="markAsUnsaved()">
                 <button class="button remove-button" onclick="removeChannel(this)">❌</button>
             `;
             channelContainer.insertBefore(newChannelRow, button);
+            markAsUnsaved();
         }
 
         function removeChannel(button) {
             button.closest('.channel-row').remove();
+            markAsUnsaved();
         }
 
         async function savePreset() {
@@ -715,7 +384,21 @@
 
             // Tarkista onko samanniminen esitys jo olemassa
             try {
-                const existingPresets = await window.electronAPI.loadPresets();
+                let existingPresets = [];
+                
+                // Tarkista ympäristö
+                if (window.electronAPI && window.electronAPI.loadPresets) {
+                    // Electron versio
+                    existingPresets = await window.electronAPI.loadPresets();
+                } else {
+                    // Node.js versio - käytä localStorage
+                    const savedPresets = localStorage.getItem('midi_fade_presets');
+                    if (savedPresets) {
+                        const parsed = JSON.parse(savedPresets);
+                        existingPresets = Object.keys(parsed).map(name => ({ name, data: parsed[name] }));
+                    }
+                }
+                
                 console.log('Existing presets:', existingPresets.map(p => p.name));
                 const existingPreset = existingPresets.find(p => p.name === presetName);
                 console.log('Found existing preset:', existingPreset ? 'YES' : 'NO');
@@ -791,27 +474,61 @@
             }
 
             try {
-                const result = await window.electronAPI.savePreset({
+                const presetData = {
                     name: presetName,
                     scenes: scenesData,
                     steps: steps
-                });
-
-                if (result.success) {
-                    showStatus(`Esitys "${presetName}" tallennettu onnistuneesti!`, 'success');
-                    document.getElementById('currentPresetName').textContent = presetName;
-                    // Jätä nimi kenttään seuraavaa tallennusta varten
+                };
+                
+                if (window.electronAPI && window.electronAPI.savePreset) {
+                    // Electron versio
+                    const result = await window.electronAPI.savePreset(presetData);
+                    if (!result.success) {
+                        throw new Error(result.error || 'Tallennusvirhe');
+                    }
                 } else {
-                    throw new Error(result.error || 'Tallennusvirhe');
+                    // Node.js versio - tallenna localStorage:een
+                    const savedPresets = localStorage.getItem('midi_fade_presets');
+                    const presets = savedPresets ? JSON.parse(savedPresets) : {};
+                    // Lisää aikaleima
+                    presetData.saved_at = new Date().toISOString();
+                    presets[presetName] = presetData;
+                    localStorage.setItem('midi_fade_presets', JSON.stringify(presets));
                 }
+
+                showStatus(`Esitys "${presetName}" tallennettu onnistuneesti!`, 'success');
+                document.getElementById('currentPresetName').textContent = presetName;
+                currentPresetName = presetName;
+                markAsSaved(); // Merkitse tallennetuksi
+                // Jätä nimi kenttään seuraavaa tallennusta varten
+
             } catch (error) {
                 showStatus(`Virhe tallennuksessa: ${error.message}`, 'error');
             }
         }
 
         async function loadPresetsDialog() {
+            // Tarkista tallentamattomat muutokset ennen latausta
+            const canContinue = await checkUnsavedChanges('ladata toisen esityksen');
+            if (!canContinue) {
+                return;
+            }
+            
             try {
-                const presets = await window.electronAPI.loadPresets();
+                let presets = [];
+                
+                // Tarkista onko Electron vai Node.js ympäristö
+                if (window.electronAPI && window.electronAPI.loadPresets) {
+                    // Electron versio
+                    presets = await window.electronAPI.loadPresets();
+                } else {
+                    // Node.js versio - käytä localStorage
+                    const savedPresets = localStorage.getItem('midi_fade_presets');
+                    if (savedPresets) {
+                        const parsed = JSON.parse(savedPresets);
+                        presets = Object.keys(parsed).map(name => ({ name, data: parsed[name] }));
+                    }
+                }
 
                 if (presets.length === 0) {
                     showStatus('⚠️ Ei tallennettuja esityksiä!', 'error');
@@ -856,6 +573,10 @@
 
                 const presetList = dialog.querySelector('#presetList');
                 presets.forEach((preset, index) => {
+                    // Normalisoi data-rakenne molemmille ympäristöille
+                    const presetData = preset.data || preset; // localStorage vs Electron
+                    const scenesCount = presetData.scenes ? presetData.scenes.length : 0;
+                    
                     const presetItem = document.createElement('div');
                     presetItem.style.cssText = `
                         background: rgba(0, 0, 0, 0.5);
@@ -869,8 +590,8 @@
                     
                     presetItem.innerHTML = `
                         <div style="color: #78dbff; font-weight: bold; font-size: 16px;">${preset.name}</div>
-                        <div style="color: #ff6b9d; font-size: 14px;">${preset.scenes.length} kohtausta</div>
-                        <div style="color: #888; font-size: 12px;">${preset.saved_at ? new Date(preset.saved_at).toLocaleString() : 'Ei aikaleimaa'}</div>
+                        <div style="color: #ff6b9d; font-size: 14px;">${scenesCount} kohtausta</div>
+                        <div style="color: #888; font-size: 12px;">${presetData.saved_at ? new Date(presetData.saved_at).toLocaleString() : 'Ei aikaleimaa'}</div>
                     `;
                     
                     presetItem.addEventListener('mouseenter', () => {
@@ -884,7 +605,9 @@
                     });
                     
                     presetItem.addEventListener('click', () => {
-                        loadPreset(preset);
+                        // Normalisoi data-rakenne ennen loadPreset-kutsua
+                        const normalizedPreset = preset.data ? preset.data : preset;
+                        loadPreset(normalizedPreset);
                         dialogOverlay.remove();
                     });
                     
@@ -908,6 +631,7 @@
             // Aseta esityksen nimi näkyviin ja tallennuskenttään
             document.getElementById('currentPresetName').textContent = preset.name;
             document.getElementById('presetName').value = preset.name;
+            currentPresetName = preset.name;
             
             // Aseta steppien määrä
             document.getElementById('stepsNum').value = preset.steps || 20;
@@ -939,9 +663,9 @@
                     newChannelRow.className = 'channel-row';
                     newChannelRow.innerHTML = `
                         <label>Kanava:</label>
-                        <input type="number" class="channel-input" value="${channel}" min="1" max="100">
+                        <input type="number" class="channel-input" value="${channel}" min="1" max="100" oninput="markAsUnsaved()">
                         <label>Arvo (0-127):</label>
-                        <input type="number" class="velocity-input" value="${velocity}" min="0" max="127">
+                        <input type="number" class="velocity-input" value="${velocity}" min="0" max="127" oninput="markAsUnsaved()">
                         <button class="button remove-button" onclick="removeChannel(this)">❌</button>
                     `;
                     channelContainer.insertBefore(newChannelRow, addButton);
@@ -950,6 +674,9 @@
             
             // Päivitä numerointi
             renumberScenes();
+            
+            // Merkitse tallennetuksi
+            markAsSaved();
             
             showStatus(`Esitys "${preset.name}" ladattu onnistuneesti!`, 'success');
         }
@@ -1088,6 +815,85 @@
             });
         }
 
+        // Kolmen vaihtoehdon dialogi (Tallenna/Hylkää/Peruuta)
+        function showTripleConfirmDialog(title, message, saveText = 'Tallenna', discardText = 'Hylkää', cancelText = 'Peruuta') {
+            console.log('showTripleConfirmDialog called with:', title, message);
+            return new Promise((resolve) => {
+                console.log('Creating triple dialog overlay...');
+                const dialogOverlay = document.createElement('div');
+                dialogOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 2000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    background: linear-gradient(135deg, rgba(26, 0, 51, 0.95) 0%, rgba(51, 0, 102, 0.95) 100%);
+                    border: 2px solid #8a2be2;
+                    border-radius: 15px;
+                    padding: 25px;
+                    max-width: 450px;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+                    text-align: center;
+                `;
+
+                dialog.innerHTML = `
+                    <h3 style="color: #78dbff; margin-top: 0; margin-bottom: 15px;">${title}</h3>
+                    <p style="color: #ffffff; margin-bottom: 25px; line-height: 1.4;">${message}</p>
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button id="saveBtn" class="button" style="background: linear-gradient(45deg, #006600, #00ff88);">💾 ${saveText}</button>
+                        <button id="discardBtn" class="button" style="background: linear-gradient(45deg, #660033, #ff4466);">🗑️ ${discardText}</button>
+                        <button id="cancelBtn" class="button" style="background: linear-gradient(45deg, #333333, #666666);">❌ ${cancelText}</button>
+                    </div>
+                `;
+
+                const saveBtn = dialog.querySelector('#saveBtn');
+                const discardBtn = dialog.querySelector('#discardBtn');
+                const cancelBtn = dialog.querySelector('#cancelBtn');
+
+                saveBtn.addEventListener('click', () => {
+                    console.log('Save button clicked');
+                    dialogOverlay.remove();
+                    resolve('save');
+                });
+
+                discardBtn.addEventListener('click', () => {
+                    console.log('Discard button clicked');
+                    dialogOverlay.remove();
+                    resolve('discard');
+                });
+
+                cancelBtn.addEventListener('click', () => {
+                    console.log('Cancel button clicked');
+                    dialogOverlay.remove();
+                    resolve('cancel');
+                });
+
+                // ESC-näppäin peruuttaa
+                const handleKeyPress = (e) => {
+                    if (e.key === 'Escape') {
+                        console.log('ESC key pressed');
+                        dialogOverlay.remove();
+                        document.removeEventListener('keydown', handleKeyPress);
+                        resolve('cancel');
+                    }
+                };
+                document.addEventListener('keydown', handleKeyPress);
+
+                dialogOverlay.appendChild(dialog);
+                document.body.appendChild(dialogOverlay);
+            });
+        }
+
         async function generateMIDIs() {
             const downloadDiv = document.getElementById('downloadLinks');
             downloadDiv.innerHTML = '<h2>Luodaan MIDI-tiedostoja...</h2>';
@@ -1212,6 +1018,18 @@ python3 -m http.server 8000 --cgi
         
         // Alusta polun esikatselu
         updatePathPreview();
+        
+        // Varoita tallentamattomista muutoksista ennen sivun sulkemista
+        window.addEventListener('beforeunload', (e) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = 'Sinulla on tallentamattomia muutoksia. Haluatko varmasti poistua?';
+                return e.returnValue;
+            }
+        });
+        
+        // Alusta tallennuksen tila
+        markAsSaved();
     </script>
 </body>
 </html>
