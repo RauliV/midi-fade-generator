@@ -490,9 +490,15 @@
             <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 3; padding-top: 50px;">
                 <!-- Tallenna/Lataa kontrollit -->
                 <div style="display: flex; gap: 12px; align-items: center;">
-                    <input type="text" id="presetName" placeholder="Esityksen nimi" style="flex: 1; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;">
-                    <button class="button" onclick="savePreset()">💾 Tallenna esitys</button>
-                    <button class="button" onclick="loadPresetsDialog()">📂 Lataa esitys</button>
+                    <input type="text" id="presetName" placeholder="Esityksen nimi" oninput="markAsUnsaved()" style="flex: 1; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;">
+                    
+                    <!-- 2x2 Esityshallinta napit -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-width: 320px;">
+                        <button class="button" onclick="newPreset()" style="font-size: 14px; padding: 8px 12px;">✨ Uusi esitys</button>
+                        <button class="button" onclick="savePreset()" style="font-size: 14px; padding: 8px 12px;">💾 Tallenna esitys</button>
+                        <button class="button" onclick="loadPresetsDialog()" style="font-size: 14px; padding: 8px 12px;">📂 Lataa esitys</button>
+                        <button class="button" onclick="deletePreset()" style="font-size: 14px; padding: 8px 12px; background: linear-gradient(45deg, #660033, #ff4466);">🗑️ Poista esitys</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -511,7 +517,7 @@
                     <div style="display: flex; flex-direction: column; gap: 6px;">
                         <div class="steps-control">
                             <label for="outputDir">Tallennushakemisto:</label>
-                            <input type="text" id="outputDir" value="generated_midi" placeholder="Esim: midifiles tai /Users/user/Documents/MIDI" style="background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace; width: 200px;" oninput="updatePathPreview()">
+                            <input type="text" id="outputDir" value="generated_midi" placeholder="Esim: midifiles tai /Users/user/Documents/MIDI" style="background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace; width: 200px;" oninput="updatePathPreview(); markAsUnsaved()">>
                             <button class="button" onclick="showDirectoryHelp()" style="margin-left: 5px; padding: 6px 10px; font-size: 12px;">ℹ️</button>
                             <button class="button" onclick="selectDirectory()" style="margin-left: 5px; padding: 6px 10px; font-size: 12px;">📁</button>
                         </div>
@@ -524,7 +530,7 @@
                     <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
                         <div class="steps-control">
                             <label for="stepsNum">Himmennyksen askeleet:</label>
-                            <input type="number" id="stepsNum" value="20" min="5" max="100">
+                            <input type="number" id="stepsNum" value="20" min="5" max="100" oninput="markAsUnsaved()">
                         </div>
                         <button class="button" onclick="generateMIDIs()" id="generateButton">🎵 Generoi MIDI-tiedostot</button>
                     </div>
@@ -577,6 +583,124 @@
 
     <script>
         let sceneCounter = 0;
+        let hasUnsavedChanges = false;
+        let currentPresetName = '';
+
+        // Merkitse muutokset tallennettuina
+        function markAsSaved() {
+            hasUnsavedChanges = false;
+            updateWindowTitle();
+        }
+
+        // Merkitse muutokset tallentamattomina
+        function markAsUnsaved() {
+            hasUnsavedChanges = true;
+            updateWindowTitle();
+        }
+
+        // Päivitä ikkunan otsikko näyttämään tallennuksen tila
+        function updateWindowTitle() {
+            const title = currentPresetName 
+                ? `🎵 MIDI Fade Generator - ${currentPresetName}${hasUnsavedChanges ? ' *' : ''}`
+                : `🎵 MIDI Fade Generator${hasUnsavedChanges ? ' *' : ''}`;
+            document.title = title;
+        }
+
+        // Tarkista tallentamattomat muutokset ja kysy varmistus
+        async function checkUnsavedChanges(actionDescription = 'jatkaa') {
+            if (!hasUnsavedChanges) {
+                return true; // Ei tallentamattomia muutoksia
+            }
+
+            try {
+                const choice = await showTripleConfirmDialog(
+                    'Tallentamattomia muutoksia',
+                    `Sinulla on tallentamattomia muutoksia. Mitä haluat tehdä ennen kun ${actionDescription}?`,
+                    'Tallenna',
+                    `Jatka tallentamatta`,
+                    'Peruuta'
+                );
+                
+                if (choice === 'save') {
+                    await savePreset();
+                    return true;
+                } else if (choice === 'discard') {
+                    return true;
+                } else {
+                    return false; // Peruuta
+                }
+            } catch (error) {
+                console.error('Error with confirm dialog:', error);
+                // Fallback tavalliseen confirm-dialogiin
+                return confirm(`Sinulla on tallentamattomia muutoksia.\n\nHaluatko ${actionDescription} menettämällä ne?`);
+            }
+        }
+
+        // Uusi esitys -funktio
+        async function newPreset() {
+            const canContinue = await checkUnsavedChanges('luoda uuden esityksen');
+            if (!canContinue) {
+                return;
+            }
+
+            // Tyhjennä kaikki kentät
+            document.getElementById('presetName').value = '';
+            currentPresetName = '';
+            
+            // Päivitä näkyvä otsikko
+            document.getElementById('currentPresetName').textContent = 'Uusi esitys';
+            
+            // Poista kaikki kohtaukset
+            const scenesDiv = document.getElementById('scenes');
+            scenesDiv.innerHTML = '';
+            sceneCounter = 0;
+            
+            // Lisää yksi tyhjä kohtaus
+            addNewScene();
+            
+            // Nollaa tallennuksen tila
+            markAsSaved();
+            
+            showStatus('✨ Uusi esitys aloitettu', 'success');
+        }
+
+        // Poista esitys -funktio
+        async function deletePreset() {
+            const presetName = document.getElementById('presetName').value.trim();
+            if (!presetName) {
+                showStatus('⚠️ Anna poistettavan esityksen nimi!', 'error');
+                return;
+            }
+
+            try {
+                const confirmDelete = await showConfirmDialog(
+                    'Poista esitys',
+                    `Haluatko varmasti poistaa esityksen "${presetName}"?\n\nTätä toimintoa ei voi peruuttaa.`,
+                    'Poista pysyvästi',
+                    'Peruuta'
+                );
+
+                if (!confirmDelete) {
+                    return;
+                }
+
+                const result = await window.electronAPI.deletePreset(presetName);
+                
+                if (result.success) {
+                    showStatus(`Esitys "${presetName}" poistettu onnistuneesti!`, 'success');
+                    
+                    // Jos poistettu esitys on tällä hetkellä aktiivinen, aloita uusi
+                    if (currentPresetName === presetName) {
+                        newPreset();
+                    }
+                } else {
+                    throw new Error(result.error || 'Poisto epäonnistui');
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                showStatus(`Virhe poistossa: ${error.message}`, 'error');
+            }
+        }
 
         function showDirectoryHelp() {
             const helpDiv = document.getElementById('directoryHelp');
@@ -634,29 +758,32 @@
             sceneDiv.innerHTML = `
                 <div class="scene-header">
                     <span style="color: #ff6b9d; font-weight: bold; font-size: 16px; margin-right: 8px;">#${sceneCounter}</span>
-                    <input type="text" class="scene-name" placeholder="Kohtauksen nimi" required>
+                    <input type="text" class="scene-name" placeholder="Kohtauksen nimi" required oninput="markAsUnsaved()">
                     <button class="button remove-button" onclick="removeScene(this)">🗑️ Poista</button>
                 </div>
                 
                 <div class="fade-container">
                     <label>Fade-in kesto (s):</label>
-                    <input type="number" class="fade-input" value="1.0" step="0.1" min="0.1">
+                    <input type="number" class="fade-input" value="1.0" step="0.1" min="0.1" oninput="markAsUnsaved()">
                     <label>Fade-out kesto (s):</label>
-                    <input type="number" class="fade-input" value="1.0" step="0.1" min="0.1">
+                    <input type="number" class="fade-input" value="1.0" step="0.1" min="0.1" oninput="markAsUnsaved()">
                 </div>
                 
                 <div class="channel-container">
                     <div class="channel-row">
                         <label>Kanava:</label>
-                        <input type="number" class="channel-input" value="1" min="1" max="100">
+                        <input type="number" class="channel-input" value="1" min="1" max="100" oninput="markAsUnsaved()">
                         <label>Arvo (0-127):</label>
-                        <input type="number" class="velocity-input" value="127" min="0" max="127">
+                        <input type="number" class="velocity-input" value="127" min="0" max="127" oninput="markAsUnsaved()">
                         <button class="button remove-button" onclick="removeChannel(this)">❌</button>
                     </div>
                     <button class="button" onclick="addChannel(this)" style="margin-top: 6px; font-size: 12px; padding: 4px 8px;">➕ Lisää kanava</button>
                 </div>
             `;
             scenesDiv.appendChild(sceneDiv);
+            
+            // Merkitse muutokset
+            markAsUnsaved();
             
             // Skrollaa uuteen kohtaukseen
             setTimeout(() => {
@@ -675,6 +802,7 @@
         function removeScene(button) {
             button.closest('.scene-container').remove();
             renumberScenes();
+            markAsUnsaved();
         }
 
         function renumberScenes() {
@@ -694,16 +822,18 @@
             newChannelRow.className = 'channel-row';
             newChannelRow.innerHTML = `
                 <label>Kanava:</label>
-                <input type="number" class="channel-input" value="1" min="1" max="100">
+                <input type="number" class="channel-input" value="1" min="1" max="100" oninput="markAsUnsaved()">
                 <label>Arvo (0-127):</label>
-                <input type="number" class="velocity-input" value="127" min="0" max="127">
+                <input type="number" class="velocity-input" value="127" min="0" max="127" oninput="markAsUnsaved()">
                 <button class="button remove-button" onclick="removeChannel(this)">❌</button>
             `;
             channelContainer.insertBefore(newChannelRow, button);
+            markAsUnsaved();
         }
 
         function removeChannel(button) {
             button.closest('.channel-row').remove();
+            markAsUnsaved();
         }
 
         async function savePreset() {
@@ -800,6 +930,8 @@
                 if (result.success) {
                     showStatus(`Esitys "${presetName}" tallennettu onnistuneesti!`, 'success');
                     document.getElementById('currentPresetName').textContent = presetName;
+                    currentPresetName = presetName;
+                    markAsSaved(); // Merkitse tallennetuksi
                     // Jätä nimi kenttään seuraavaa tallennusta varten
                 } else {
                     throw new Error(result.error || 'Tallennusvirhe');
@@ -810,6 +942,12 @@
         }
 
         async function loadPresetsDialog() {
+            // Tarkista tallentamattomat muutokset ennen latausta
+            const canContinue = await checkUnsavedChanges('ladata toisen esityksen');
+            if (!canContinue) {
+                return;
+            }
+            
             try {
                 const presets = await window.electronAPI.loadPresets();
 
@@ -908,6 +1046,7 @@
             // Aseta esityksen nimi näkyviin ja tallennuskenttään
             document.getElementById('currentPresetName').textContent = preset.name;
             document.getElementById('presetName').value = preset.name;
+            currentPresetName = preset.name;
             
             // Aseta steppien määrä
             document.getElementById('stepsNum').value = preset.steps || 20;
@@ -939,9 +1078,9 @@
                     newChannelRow.className = 'channel-row';
                     newChannelRow.innerHTML = `
                         <label>Kanava:</label>
-                        <input type="number" class="channel-input" value="${channel}" min="1" max="100">
+                        <input type="number" class="channel-input" value="${channel}" min="1" max="100" oninput="markAsUnsaved()">
                         <label>Arvo (0-127):</label>
-                        <input type="number" class="velocity-input" value="${velocity}" min="0" max="127">
+                        <input type="number" class="velocity-input" value="${velocity}" min="0" max="127" oninput="markAsUnsaved()">
                         <button class="button remove-button" onclick="removeChannel(this)">❌</button>
                     `;
                     channelContainer.insertBefore(newChannelRow, addButton);
@@ -950,6 +1089,9 @@
             
             // Päivitä numerointi
             renumberScenes();
+            
+            // Merkitse tallennetuksi
+            markAsSaved();
             
             showStatus(`Esitys "${preset.name}" ladattu onnistuneesti!`, 'success');
         }
@@ -1088,6 +1230,85 @@
             });
         }
 
+        // Kolmen vaihtoehdon dialogi (Tallenna/Hylkää/Peruuta)
+        function showTripleConfirmDialog(title, message, saveText = 'Tallenna', discardText = 'Hylkää', cancelText = 'Peruuta') {
+            console.log('showTripleConfirmDialog called with:', title, message);
+            return new Promise((resolve) => {
+                console.log('Creating triple dialog overlay...');
+                const dialogOverlay = document.createElement('div');
+                dialogOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 2000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    background: linear-gradient(135deg, rgba(26, 0, 51, 0.95) 0%, rgba(51, 0, 102, 0.95) 100%);
+                    border: 2px solid #8a2be2;
+                    border-radius: 15px;
+                    padding: 25px;
+                    max-width: 450px;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+                    text-align: center;
+                `;
+
+                dialog.innerHTML = `
+                    <h3 style="color: #78dbff; margin-top: 0; margin-bottom: 15px;">${title}</h3>
+                    <p style="color: #ffffff; margin-bottom: 25px; line-height: 1.4;">${message}</p>
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button id="saveBtn" class="button" style="background: linear-gradient(45deg, #006600, #00ff88);">💾 ${saveText}</button>
+                        <button id="discardBtn" class="button" style="background: linear-gradient(45deg, #660033, #ff4466);">🗑️ ${discardText}</button>
+                        <button id="cancelBtn" class="button" style="background: linear-gradient(45deg, #333333, #666666);">❌ ${cancelText}</button>
+                    </div>
+                `;
+
+                const saveBtn = dialog.querySelector('#saveBtn');
+                const discardBtn = dialog.querySelector('#discardBtn');
+                const cancelBtn = dialog.querySelector('#cancelBtn');
+
+                saveBtn.addEventListener('click', () => {
+                    console.log('Save button clicked');
+                    dialogOverlay.remove();
+                    resolve('save');
+                });
+
+                discardBtn.addEventListener('click', () => {
+                    console.log('Discard button clicked');
+                    dialogOverlay.remove();
+                    resolve('discard');
+                });
+
+                cancelBtn.addEventListener('click', () => {
+                    console.log('Cancel button clicked');
+                    dialogOverlay.remove();
+                    resolve('cancel');
+                });
+
+                // ESC-näppäin peruuttaa
+                const handleKeyPress = (e) => {
+                    if (e.key === 'Escape') {
+                        console.log('ESC key pressed');
+                        dialogOverlay.remove();
+                        document.removeEventListener('keydown', handleKeyPress);
+                        resolve('cancel');
+                    }
+                };
+                document.addEventListener('keydown', handleKeyPress);
+
+                dialogOverlay.appendChild(dialog);
+                document.body.appendChild(dialogOverlay);
+            });
+        }
+
         async function generateMIDIs() {
             const downloadDiv = document.getElementById('downloadLinks');
             downloadDiv.innerHTML = '<h2>Luodaan MIDI-tiedostoja...</h2>';
@@ -1212,6 +1433,18 @@ python3 -m http.server 8000 --cgi
         
         // Alusta polun esikatselu
         updatePathPreview();
+        
+        // Varoita tallentamattomista muutoksista ennen sivun sulkemista
+        window.addEventListener('beforeunload', (e) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = 'Sinulla on tallentamattomia muutoksia. Haluatko varmasti poistua?';
+                return e.returnValue;
+            }
+        });
+        
+        // Alusta tallennuksen tila
+        markAsSaved();
     </script>
 </body>
 </html>

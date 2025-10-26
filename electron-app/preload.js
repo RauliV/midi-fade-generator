@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Presets
     loadPresets: () => ipcRenderer.invoke('load-presets'),
     savePreset: (presetData) => ipcRenderer.invoke('save-preset', presetData),
+    deletePreset: (presetName) => ipcRenderer.invoke('delete-preset', presetName),
     
     // MIDI generointi
     generateMidi: (data) => ipcRenderer.invoke('generate-midi', data),

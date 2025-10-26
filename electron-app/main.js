@@ -33,6 +33,50 @@ function createWindow() {
     // Lataa HTML-tiedosto
     mainWindow.loadFile('index.html');
 
+    // Käsittele ikkunan sulkemisyritys
+    mainWindow.on('close', async (event) => {
+        // Estä sulkeminen aluksi
+        event.preventDefault();
+        
+        try {
+            // Tarkista onko tallentamattomia muutoksia
+            const hasChanges = await mainWindow.webContents.executeJavaScript('typeof hasUnsavedChanges !== "undefined" ? hasUnsavedChanges : false');
+            
+            if (hasChanges) {
+                // Käytä sovelluksen omaa dialogi-tyyliä
+                const shouldClose = await mainWindow.webContents.executeJavaScript(`
+                    showTripleConfirmDialog(
+                        'Tallentamattomia muutoksia',
+                        'Sinulla on tallentamattomia muutoksia. Mitä haluat tehdä?',
+                        'Tallenna ja sulje',
+                        'Sulje tallentamatta', 
+                        'Peruuta'
+                    ).then(choice => {
+                        if (choice === 'save') {
+                            return savePreset().then(() => 'close');
+                        } else if (choice === 'discard') {
+                            return 'close';
+                        } else {
+                            return 'cancel';
+                        }
+                    }).catch(() => 'cancel')
+                `);
+
+                if (shouldClose === 'close') {
+                    mainWindow.destroy(); // Pakota sulkeminen
+                }
+                // Jos shouldClose !== 'close', ei tehdä mitään (sulkeminen estetty)
+            } else {
+                // Ei tallentamattomia muutoksia, sulje normaalisti
+                mainWindow.destroy();
+            }
+        } catch (error) {
+            console.error('Error checking unsaved changes:', error);
+            // Jos tarkistus epäonnistuu, sulje sovellus
+            mainWindow.destroy();
+        }
+    });
+
     // Varmista että sovellus sammuu kun ikkuna suljetaan
     mainWindow.on('closed', () => {
         mainWindow = null;
@@ -139,6 +183,45 @@ ipcMain.handle('save-preset', async (event, presetData) => {
         return { success: true, replaced: existingIndex >= 0 };
     } catch (error) {
         console.error('Virhe tallentaessa presettia:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// Preset poistaminen
+ipcMain.handle('delete-preset', async (event, presetName) => {
+    try {
+        console.log('Deleting preset:', presetName);
+        
+        // Etsi poistettava esitys
+        const deleteIndex = presetsData.findIndex(p => p.name === presetName);
+        
+        if (deleteIndex === -1) {
+            return { success: false, error: `Esitystä "${presetName}" ei löytynyt` };
+        }
+        
+        // Poista esitys listasta
+        presetsData.splice(deleteIndex, 1);
+        
+        // Tallenna päivitetty lista tiedostoon
+        const os = require('os');
+        const presetsPath = process.platform === 'darwin' 
+            ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
+            : process.platform === 'win32'
+                ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
+                : path.join(__dirname, 'esitykset.json');
+            
+        // Varmista että hakemisto on olemassa
+        if (process.platform === 'darwin' || process.platform === 'win32') {
+            const dir = path.dirname(presetsPath);
+            await fs.mkdir(dir, { recursive: true });
+        }
+        
+        console.log('Saving updated presets to:', presetsPath);
+        await fs.writeFile(presetsPath, JSON.stringify(presetsData, null, 2));
+        
+        return { success: true };
+    } catch (error) {
+        console.error('Virhe poistettaessa esitystä:', error);
         return { success: false, error: error.message };
     }
 });
