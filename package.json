@@ -1,6 +1,6 @@
 {
   "name": "midi-fade-generator-electron",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Beautiful MIDI Fade Generator with neon theme for Windows",
   "main": "main.js",
   "scripts": {
