@@ -55,16 +55,16 @@
             <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
                 <!-- MIDI kontrollit -->
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <!-- Vasen puoli: Hakemisto ja polku päällekkäin -->
+                    <!-- Vasen puoli: Hakemisto -->
                     <div style="display: flex; flex-direction: column; gap: 6px;">
                         <div class="steps-control">
                             <label for="outputDir">Tallennushakemisto:</label>
-                            <input type="text" id="outputDir" value="generated_midi" placeholder="Esim: midifiles tai /Users/user/Documents/MIDI" style="background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace; width: 200px;" oninput="updatePathPreview(); markAsUnsaved()">>
-                            <button class="button" onclick="selectDirectory()" style="margin-left: 5px; padding: 6px 10px; font-size: 12px;">📁</button>
+                            <input type="text" id="outputDir" value="generated_midi" placeholder="Esim: midifiles tai /Users/user/Documents/MIDI" style="background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace; width: 350px;" oninput="markAsUnsaved()">
                         </div>
-                        <!-- Polun esikatselu -->
-                        <div id="pathPreview" style="padding: 4px 8px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(120, 219, 255, 0.3); border-radius: 5px; color: #78dbff; font-size: 10px; width: 400px;">
-                            <strong>📁</strong> <span id="previewPath">generated_midi</span>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <button class="button" onclick="selectDirectory()" style="padding: 6px 10px; font-size: 12px;">📁 Selaa</button>
+                            <!-- Polun esikatselu piilossa (päivittyy vain input-kenttään) -->
+                            <span id="previewPath" style="display: none;">generated_midi</span>
                         </div>
                     </div>
                     <!-- Oikea puoli: Askeleet ja nappi päällekkäin -->
@@ -882,44 +882,8 @@
         }
 
         async function updatePathPreview() {
-            const outputDir = document.getElementById('outputDir').value.trim();
-            const previewPath = document.getElementById('previewPath');
-            
-            if (outputDir.startsWith('/')) {
-                // Absoluuttinen polku
-                previewPath.textContent = outputDir;
-            } else if (outputDir.startsWith('~/')) {
-                // Kotihakemisto
-                if (window.electronAPI) {
-                    previewPath.textContent = outputDir.replace('~', (navigator.platform === 'Win32' ? 'C:\\Users\\User' : '/Users/user'));
-                } else {
-                    previewPath.textContent = outputDir.replace('~', '/Users/user');
-                }
-            } else if (outputDir === '') {
-                // Tyhjä -> oletus - hae dynaaminen appPath
-                if (window.electronAPI && window.electronAPI.getAppPath) {
-                    try {
-                        const appPath = await window.electronAPI.getAppPath();
-                        previewPath.textContent = appPath + '/generated_midi';
-                    } catch (e) {
-                        previewPath.textContent = 'generated_midi';
-                    }
-                } else {
-                    previewPath.textContent = 'generated_midi';
-                }
-            } else {
-                // Suhteellinen polku - hae dynaaminen appPath
-                if (window.electronAPI && window.electronAPI.getAppPath) {
-                    try {
-                        const appPath = await window.electronAPI.getAppPath();
-                        previewPath.textContent = `${appPath}/${outputDir}`;
-                    } catch (e) {
-                        previewPath.textContent = outputDir;
-                    }
-                } else {
-                    previewPath.textContent = outputDir;
-                }
-            }
+            // Ei enää tarvita - polku näkyy suoraan input-kentässä
+            // Funktio pidetään yhteensopivuuden vuoksi
         }
 
         async function selectDirectory() {
@@ -927,12 +891,11 @@
                 try {
                     const selectedPath = await window.electronAPI.selectDirectory();
                     if (selectedPath) {
-                        // Käytä valittua polkua sellaisenaan - ei tehdä suhteelliseksi
+                        // Käytä valittua polkua sellaisenaan - päivitä input-kenttä
                         console.log('Selected absolute path:', selectedPath);
                         
-                        // Aseta polku kokonaan (ei lisää olemassa olevan perään)
+                        // Aseta polku input-kenttään
                         document.getElementById('outputDir').value = selectedPath;
-                        updatePathPreview();
                         markAsUnsaved();
                         showStatus(`Hakemisto valittu: ${selectedPath}`, 'success');
                     }
@@ -1894,9 +1857,6 @@ python3 -m http.server 8000 --cgi
 
         // Alusta ensimmäinen tyhjä kohtaus
         addNewScene();
-        
-        // Alusta polun esikatselu
-        updatePathPreview();
         
         // Varoita tallentamattomista muutoksista ennen sivun sulkemista
         window.addEventListener('beforeunload', (e) => {
