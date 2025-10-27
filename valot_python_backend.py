@@ -28,15 +28,8 @@ def create_fade_midi(filename, notes, velocities, duration, is_fade_in, steps=20
                 mf.addNote(track, channel, note, time, duration_per_step_beats, vel)
             time += duration_per_step_beats
         
-        # Hold target velocity lyhyesti
-        hold_beats = 0.4
-        for note, target_vel in zip(notes, velocities):
-            mf.addNote(track, channel, note, time, hold_beats, target_vel)
-        time += hold_beats
-        
-        # Note off
-        for note in notes:
-            mf.addNote(track, channel, note, time, 0.1, 0)
+        # Jätä nuotit soimaan loputtomiin - ei note off komentoa!
+        # Fade-in:n tarkoitus on jättää valot päälle kunnes ne sammutetaan fade-out:lla
     else:
         # Fade-out: target -> 0
         for step in range(steps + 1):
