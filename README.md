@@ -1,8 +1,16 @@
-# 🎭 MIDI Fade Generator - Complete Light Control System
+# 🎭 MIDI Fade Generator - Complete Theater Control System
 
-**Professional MIDI-based lighting control system with full Blender integration and RGBW color mixing support.**
+**Professional MIDI lighting + ESP32 smoke machine automation for live theater**
 
-## 🌟 Major Features
+## 🤖 Meet BRUNO - Our Theater Hero
+
+*Bruno is our retro-futuristic robotic remote controller - the reliable backup operator for professional theater smoke effects. When Multiplay automation fails, Bruno's simple "lift head → press button" operation keeps the show running perfectly.*
+
+**Big Remote Universal Navigator Operator - Your trusted theater companion! 🎪**
+
+---
+
+## 🌟 Complete Theater Ecosystem
 
 ### 🎵 MIDI Generation (Electron App v1.1.6)
 - Professional fade-in/fade-out generation  

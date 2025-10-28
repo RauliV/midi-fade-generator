@@ -255,6 +255,12 @@ void setEyeState(String state) {
 void drawEyes() {
   display.clearDisplay();
   
+  // Jos WiFi ei toimi, näytä X X silmät (kuten kuvassa!)
+  if (WiFi.status() != WL_CONNECTED) {
+    drawDisconnectedEyes();
+    return;
+  }
+  
   // Vasen silmä (kehys)
   display.drawCircle(leftEyeX, leftEyeY, eyeRadius, WHITE);
   // Vasen pupilli
@@ -264,6 +270,27 @@ void drawEyes() {
   display.drawCircle(rightEyeX, rightEyeY, eyeRadius, WHITE);
   // Oikea pupilli
   display.fillCircle(rightEyeX + pupilOffsetX, rightEyeY + pupilOffsetY, pupilRadius, WHITE);
+  
+  display.display();
+}
+
+void drawDisconnectedEyes() {
+  // X X silmät kun yhteys poikki (kuten kuvassa!)
+  display.clearDisplay();
+  
+  // Vasen X
+  display.drawLine(leftEyeX - 8, leftEyeY - 8, leftEyeX + 8, leftEyeY + 8, WHITE);
+  display.drawLine(leftEyeX - 8, leftEyeY + 8, leftEyeX + 8, leftEyeY - 8, WHITE);
+  
+  // Oikea X  
+  display.drawLine(rightEyeX - 8, rightEyeY - 8, rightEyeX + 8, rightEyeY + 8, WHITE);
+  display.drawLine(rightEyeX - 8, rightEyeY + 8, rightEyeX + 8, rightEyeY - 8, WHITE);
+  
+  // Tekstiä alle
+  display.setTextSize(1);
+  display.setCursor(0, 24);
+  display.setTextColor(WHITE);
+  display.println("NO CONNECTION");
   
   display.display();
 }
