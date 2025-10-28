@@ -3,8 +3,8 @@
 #include <ArduinoJson.h>
 
 // WiFi-asetukset (korvaa omillasi)
-const char *ssid = "Noku";
-const char *password = "savuk0nel4uk";
+const char *ssid = "YourNetworkName";
+const char *password = "YourPassword";
 
 
 // Web-palvelin portissa 80

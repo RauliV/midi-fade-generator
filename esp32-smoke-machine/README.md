@@ -8,17 +8,22 @@ Ammattimainen teatteri-järjestelmä joka yhdistää:
 
 ## 🎪 Järjestelmän osat
 
-### 1. Savupalvelin (ESP32 Access Point)
+### 1. **Multiplay** (Pääohjaus) ⭐
+- **HTTP API** → ESP32 savupalvelimeen
+- **Automaattinen** show-ohjaus
+- **Ensisijainen** ohjausmenetelmä
+
+### 2. Savupalvelin (ESP32 WiFi)
 - **Tiedosto**: `savupalvelin2.ino`
-- **Tehtävä**: WiFi AP + HTTP API + silmä-simulaatio  
-- **IP**: 192.168.4.1
+- **Tehtävä**: HTTP API + relay-ohjaus
+- **IP**: Tavallinen WiFi-verkko (ei AP)
 - **Releet**: Pin 27 (savukone)
 
-### 2. Robotti-kaukolaukaisin (ESP32 Client)  
+### 3. Robotti-kaukolaukaisin (Backup) 🔄
 - **Tiedosto**: `nappipuoli2.ino`
-- **Tehtävä**: OLED-silmät + manuaalinen nappi
-- **Komponentit**: SSD1306 OLED + painonappi
-- **Yhteys**: WiFi client → savupalvelimeen
+- **Tehtävä**: OLED-silmät + hätälaukaisu
+- **Yhteys**: IR/Radio (ei WiFi-konflikteja!)
+- **Käyttö**: Backup kun Multiplay ei toimi
 ```
 ESP32 GPIO 2  → Relay IN
 ESP32 GND     → Relay GND  

@@ -19,6 +19,19 @@ valotG.html
 # Turva-kansio ja backupit
 turva/
 *.backup
+
+# 🔐 TURVALLISUUS - ÄLÄ COMMITOI SALASANOJA
+config.h
+secrets.h  
+wifi_credentials.h
+credentials.h
+*.key
+*.pem
+
+# ESP32 WiFi-asetukset (yksityiset)
+esp32-smoke-machine/wifi_config.h
+esp32-smoke-machine/credentials.h
+*.backup
 *.json.backup
 
 # Test-tiedostot ja vanhat skriptit

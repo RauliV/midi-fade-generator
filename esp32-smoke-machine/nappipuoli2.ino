@@ -4,8 +4,8 @@
 #include <WiFi.h>          // WiFi-tuki (olettaen ESP32 tai ESP8266)
 #include <HTTPClient.h>    // HTTP-client
 
-const char* ssid = "Noku";
-const char* password = "savuk0nel4uk";
+const char* ssid = "YourNetworkName";
+const char* password = "YourPassword";
 const int buttonPin = 27;
 int buttonState = 0;
 

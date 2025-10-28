@@ -18,11 +18,11 @@ import json
 import os
 from datetime import datetime
 
-# ESP32 Savukone API (WiFi Access Point)
-ESP32_BASE_URL = "http://192.168.4.1"  # savupalvelin2.ino WiFi AP IP
+# ESP32 Savukone API (Primary control via Multiplay)
+ESP32_BASE_URL = "http://192.168.1.100"  # ESP32 IP oikeassa WiFi-verkossa
 
-# Robotti-kaukolaukaisin API
-ROBOT_REMOTE_URL = "http://192.168.4.1"  # sama verkko kuin savupalvelin
+# Robotti-kaukolaukaisin (Backup/Manual only)  
+ROBOT_BACKUP_NOTE = "Robotti toimii IR/Radio backupina - ei WiFi-yhteyttä Multiplayn kanssa"
 
 # Savukoneiden + silmien mapping  
 SMOKE_MACHINE_MAP = {
