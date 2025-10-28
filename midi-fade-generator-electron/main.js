@@ -6,7 +6,65 @@ const fs = require('fs').promises;
 const isDev = process.env.NODE_ENV === 'development';
 
 let mainWindow;
+
+// Turvallinen logging-funktio EPIPE-virheiden välttämiseksi
+function safeLog(...args) {
+    // Ei logita mitään tuotannossa EPIPE-virheiden välttämiseksi
+    if (process.env.NODE_ENV === 'development') {
+        try {
+            console.log(...args);
+        } catch (error) {
+            // Sivuuta console-virheet hiljaa
+        }
+    }
+}
+
+// Global presets data
 let presetsData = [];
+
+// Apufunktio preset-polun löytämiseksi
+async function findPresetsPath() {
+    const os = require('os');
+    let possiblePaths = [];
+    
+    if (process.platform === 'darwin') {
+        possiblePaths = [
+            path.join(os.homedir(), 'Documents', 'valot', 'esitykset.json'), // Nykyinen sijainti
+            path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json') // Oletussijainti
+        ];
+    } else if (process.platform === 'win32') {
+        possiblePaths = [
+            path.join(os.homedir(), 'Documents', 'valot', 'esitykset.json'), // Nykyinen sijainti
+            path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json') // Oletussijainti
+        ];
+    } else {
+        // Linux: käytä projektin hakemistoa
+        possiblePaths = [path.join(__dirname, '..', 'esitykset.json')];
+    }
+    
+    // Etsi ensimmäinen olemassa oleva tiedosto
+    for (const testPath of possiblePaths) {
+        try {
+            await fs.access(testPath);
+            safeLog('Found existing presets at:', testPath);
+            return testPath;
+        } catch (e) {
+            safeLog('Presets not found at:', testPath);
+        }
+    }
+    
+    // Jos mitään ei löytynyt, käytä uutta polkua
+    const defaultPath = possiblePaths[possiblePaths.length - 1]; // Viimeinen = uusi polku
+    safeLog('No existing presets found, using default path:', defaultPath);
+    
+    // Varmista että hakemisto on olemassa
+    if (process.platform === 'darwin' || process.platform === 'win32') {
+        const dir = path.dirname(defaultPath);
+        await fs.mkdir(dir, { recursive: true });
+    }
+    
+    return defaultPath;
+}
 
 // Luo pääikkuna
 function createWindow() {
@@ -71,7 +129,7 @@ function createWindow() {
                 mainWindow.destroy();
             }
         } catch (error) {
-            console.error('Error checking unsaved changes:', error);
+            safeLog('Error checking unsaved changes:', error);
             // Jos tarkistus epäonnistuu, sulje sovellus
             mainWindow.destroy();
         }
@@ -112,13 +170,13 @@ ipcMain.handle('select-directory', async () => {
     let defaultPath;
     if (process.platform === 'darwin' || process.platform === 'win32') {
         // macOS ja Windows: käyttäjän Documents-hakemisto
-        defaultPath = path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'generated_midi');
+        defaultPath = path.join(os.homedir(), 'Documents', 'valot', 'generated_midi');
     } else {
         // Linux: paikallinen hakemisto
         defaultPath = path.join(__dirname, 'generated_midi');
     }
     
-    console.log('Default directory path:', defaultPath);
+    safeLog('Default directory path:', defaultPath);
     
     const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openDirectory'],
@@ -127,7 +185,7 @@ ipcMain.handle('select-directory', async () => {
     
     if (!result.canceled && result.filePaths.length > 0) {
         const selectedPath = result.filePaths[0];
-        console.log('Selected directory:', selectedPath);
+        safeLog('Selected directory:', selectedPath);
         return selectedPath;
     }
     return null; // Jos käyttäjä peruuttaa, palauta null
@@ -139,7 +197,7 @@ ipcMain.handle('get-app-path', async () => {
     
     // Käytä samaa logiikkaa kuin muualla
     if (process.platform === 'darwin' || process.platform === 'win32') {
-        return path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator');
+        return path.join(os.homedir(), 'Documents', 'valot');
     } else {
         return __dirname;
     }
@@ -148,26 +206,34 @@ ipcMain.handle('get-app-path', async () => {
 // Presets-tiedoston lataus
 ipcMain.handle('load-presets', async () => {
     try {
-        // Käytä käyttäjän kotihakemistoa kaikilla alustoilla
-        const os = require('os');
-        const presetsPath = process.platform === 'darwin' 
-            ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
-            : process.platform === 'win32'
-                ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')  
-                : path.join(__dirname, 'esitykset.json');
-            
-        // Varmista että hakemisto on olemassa (Windows ja macOS)
-        if (process.platform === 'darwin' || process.platform === 'win32') {
-            const dir = path.dirname(presetsPath);
-            await fs.mkdir(dir, { recursive: true });
-        }
-        
-        console.log('Loading presets from:', presetsPath);
+        const presetsPath = await findPresetsPath();
+        safeLog('Loading presets from:', presetsPath);
         const data = await fs.readFile(presetsPath, 'utf8');
-        presetsData = JSON.parse(data);
+        let rawData = JSON.parse(data);
+        
+        // Normalisoi vanha muoto uuteen muotoon
+        presetsData = rawData.map(preset => {
+            if (preset.channels && !preset.scenes) {
+                // Vanha muoto: muunna uuteen muotoon
+                return {
+                    name: preset.name,
+                    scenes: [{
+                        name: preset.name || "Scene 1",
+                        channels: preset.channels,
+                        fade_in_duration: preset.fade_in_duration || 1,
+                        fade_out_duration: preset.fade_out_duration || 1
+                    }],
+                    steps: preset.steps || 20,
+                    saved_at: preset.saved_at || new Date().toISOString()
+                };
+            }
+            // Uusi muoto: palauta sellaisenaan
+            return preset;
+        });
+        
         return presetsData;
     } catch (error) {
-        console.log('No existing presets file, starting with empty array');
+        safeLog('No existing presets file, starting with empty array');
         // Jos tiedostoa ei ole, palautetaan tyhjä array
         presetsData = [];
         return presetsData;
@@ -188,26 +254,14 @@ ipcMain.handle('save-preset', async (event, presetData) => {
             presetsData.push(presetData);
         }
         
-        // Tallenna tiedostoon - käytä käyttäjän kotihakemistoa kaikilla alustoilla
-        const os = require('os');
-        const presetsPath = process.platform === 'darwin' 
-            ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
-            : process.platform === 'win32'
-                ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
-                : path.join(__dirname, 'esitykset.json');
-            
-        // Varmista että hakemisto on olemassa (Windows ja macOS)
-        if (process.platform === 'darwin' || process.platform === 'win32') {
-            const dir = path.dirname(presetsPath);
-            await fs.mkdir(dir, { recursive: true });
-        }
-        
-        console.log('Saving presets to:', presetsPath);
+        // Tallenna tiedostoon 
+        const presetsPath = await findPresetsPath();
+        safeLog('Saving presets to:', presetsPath);
         await fs.writeFile(presetsPath, JSON.stringify(presetsData, null, 2));
         
         return { success: true, replaced: existingIndex >= 0 };
     } catch (error) {
-        console.error('Virhe tallentaessa presettia:', error);
+        safeLog('Virhe tallentaessa presettia:', error);
         return { success: false, error: error.message };
     }
 });
@@ -215,7 +269,7 @@ ipcMain.handle('save-preset', async (event, presetData) => {
 // Preset poistaminen
 ipcMain.handle('delete-preset', async (event, presetName) => {
     try {
-        console.log('Deleting preset:', presetName);
+        safeLog('Deleting preset:', presetName);
         
         // Etsi poistettava esitys
         const deleteIndex = presetsData.findIndex(p => p.name === presetName);
@@ -228,25 +282,13 @@ ipcMain.handle('delete-preset', async (event, presetName) => {
         presetsData.splice(deleteIndex, 1);
         
         // Tallenna päivitetty lista tiedostoon
-        const os = require('os');
-        const presetsPath = process.platform === 'darwin' 
-            ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
-            : process.platform === 'win32'
-                ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
-                : path.join(__dirname, 'esitykset.json');
-            
-        // Varmista että hakemisto on olemassa
-        if (process.platform === 'darwin' || process.platform === 'win32') {
-            const dir = path.dirname(presetsPath);
-            await fs.mkdir(dir, { recursive: true });
-        }
-        
-        console.log('Saving updated presets to:', presetsPath);
+        const presetsPath = await findPresetsPath();
+        safeLog('Saving updated presets to:', presetsPath);
         await fs.writeFile(presetsPath, JSON.stringify(presetsData, null, 2));
         
         return { success: true };
     } catch (error) {
-        console.error('Virhe poistettaessa esitystä:', error);
+        safeLog('Virhe poistettaessa esitystä:', error);
         return { success: false, error: error.message };
     }
 });
@@ -254,7 +296,7 @@ ipcMain.handle('delete-preset', async (event, presetName) => {
 // Esitysten vienti tiedostoon
 ipcMain.handle('export-presets', async (event) => {
     try {
-        console.log('Exporting presets...');
+        safeLog('Exporting presets...');
         
         // Näytä tallennusdialogi
         const { dialog } = require('electron');
@@ -286,7 +328,7 @@ ipcMain.handle('export-presets', async (event) => {
             count: presetsData.length
         };
     } catch (error) {
-        console.error('Virhe viennissä:', error);
+        safeLog('Virhe viennissä:', error);
         return { success: false, error: error.message };
     }
 });
@@ -294,7 +336,7 @@ ipcMain.handle('export-presets', async (event) => {
 // Esitysten tuonti tiedostosta
 ipcMain.handle('import-presets', async (event) => {
     try {
-        console.log('Importing presets...');
+        safeLog('Importing presets...');
         
         // Näytä tiedostovalintadialogi
         const { dialog } = require('electron');
@@ -353,9 +395,9 @@ ipcMain.handle('import-presets', async (event) => {
         // Tallenna päivitetyt esitykset
         const os = require('os');
         const presetsPath = process.platform === 'darwin' 
-            ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
+            ? path.join(os.homedir(), 'Documents', 'valot', 'esitykset.json')
             : process.platform === 'win32'
-                ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
+                ? path.join(os.homedir(), 'Documents', 'valot', 'esitykset.json')
                 : path.join(__dirname, 'esitykset.json');
             
         // Varmista että hakemisto on olemassa
@@ -374,7 +416,7 @@ ipcMain.handle('import-presets', async (event) => {
             firstImported: firstImported
         };
     } catch (error) {
-        console.error('Virhe tuonnissa:', error);
+        safeLog('Virhe tuonnissa:', error);
         return { success: false, error: error.message };
     }
 });
@@ -382,7 +424,7 @@ ipcMain.handle('import-presets', async (event) => {
 // Valittujen esitysten vienti
 ipcMain.handle('export-selected-presets', async (event, selectedPresets) => {
     try {
-        console.log('Exporting selected presets:', selectedPresets.length);
+        safeLog('Exporting selected presets:', selectedPresets.length);
         
         // Näytä tallennusdialogi
         const { dialog } = require('electron');
@@ -414,7 +456,7 @@ ipcMain.handle('export-selected-presets', async (event, selectedPresets) => {
             count: selectedPresets.length
         };
     } catch (error) {
-        console.error('Virhe viennissä:', error);
+        safeLog('Virhe viennissä:', error);
         return { success: false, error: error.message };
     }
 });
@@ -422,7 +464,7 @@ ipcMain.handle('export-selected-presets', async (event, selectedPresets) => {
 // Esikatsele tuotavat esitykset (ei tuo vielä)
 ipcMain.handle('preview-import-presets', async (event) => {
     try {
-        console.log('Previewing import presets...');
+        safeLog('Previewing import presets...');
         
         // Näytä tiedostovalintadialogi
         const { dialog } = require('electron');
@@ -463,7 +505,7 @@ ipcMain.handle('preview-import-presets', async (event) => {
             fullPath: filePath
         };
     } catch (error) {
-        console.error('Virhe esikatselussa:', error);
+        safeLog('Virhe esikatselussa:', error);
         return { success: false, error: error.message };
     }
 });
@@ -471,7 +513,7 @@ ipcMain.handle('preview-import-presets', async (event) => {
 // Tuo valitut esitykset
 ipcMain.handle('import-selected-presets', async (event, selectedPresets) => {
     try {
-        console.log('Importing selected presets:', selectedPresets.length);
+        safeLog('Importing selected presets:', selectedPresets.length);
         
         let importedCount = 0;
         let existingCount = 0;
@@ -496,19 +538,7 @@ ipcMain.handle('import-selected-presets', async (event, selectedPresets) => {
         }
         
         // Tallenna päivitetyt esitykset
-        const os = require('os');
-        const presetsPath = process.platform === 'darwin' 
-            ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
-            : process.platform === 'win32'
-                ? path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator', 'esitykset.json')
-                : path.join(__dirname, 'esitykset.json');
-            
-        // Varmista että hakemisto on olemassa
-        if (process.platform === 'darwin' || process.platform === 'win32') {
-            const dir = path.dirname(presetsPath);
-            await fs.mkdir(dir, { recursive: true });
-        }
-        
+        const presetsPath = await findPresetsPath();
         await fs.writeFile(presetsPath, JSON.stringify(presetsData, null, 2));
         
         return { 
@@ -518,18 +548,70 @@ ipcMain.handle('import-selected-presets', async (event, selectedPresets) => {
             firstImported: firstImported
         };
     } catch (error) {
-        console.error('Virhe tuonnissa:', error);
+        safeLog('Virhe tuonnissa:', error);
         return { success: false, error: error.message };
     }
 });
 
 // MIDI-tiedostojen generointi
 ipcMain.handle('generate-midi', async (event, data) => {
-    console.log('=== Python MIDI Generation (Electron) ===');
-    console.log('Platform:', process.platform);
-    console.log('Input data:', JSON.stringify(data, null, 2));
+    safeLog('=== Python MIDI Generation (Electron) ===');
+    safeLog('Platform:', process.platform);
+    safeLog('Input data:', JSON.stringify(data, null, 2));
     
     try {
+        // Normalisoi presetit scenes-muotoon Python-skriptiä varten
+        let scenesToProcess = [];
+        
+        if (data.presets && Array.isArray(data.presets)) {
+            for (const preset of data.presets) {
+                safeLog('🔧 DEBUG: Processing preset:', preset.name);
+                
+                if (preset.channels && !preset.scenes) {
+                    // Vanha muoto: muunna scenes-muotoon
+                    safeLog('🔧 DEBUG: Converting old format preset to new format');
+                    scenesToProcess.push({
+                        name: preset.name,
+                        channels: preset.channels,
+                        fade_in_duration: preset.fade_in_duration || 1.0,
+                        fade_out_duration: preset.fade_out_duration || 1.0,
+                        steps: preset.steps || 20
+                    });
+                } else if (preset.scenes) {
+                    // Uusi muoto: lisää scenes-lista
+                    safeLog('🔧 DEBUG: Using new format preset with', preset.scenes.length, 'scenes');
+                    for (const scene of preset.scenes) {
+                        scenesToProcess.push({
+                            name: scene.name,
+                            channels: scene.channels,
+                            fade_in_duration: scene.fade_in_duration || 1.0,
+                            fade_out_duration: scene.fade_out_duration || 1.0,
+                            steps: scene.steps || preset.steps || 20
+                        });
+                    }
+                } else {
+                    console.warn('🔧 WARNING: Unknown preset format:', preset);
+                }
+            }
+        } else if (data.scenes && Array.isArray(data.scenes)) {
+            // Data on jo scenes-muodossa
+            safeLog('🔧 DEBUG: Data already in scenes format');
+            scenesToProcess = data.scenes;
+        } else {
+            throw new Error('Invalid data format: no presets or scenes found');
+        }
+        
+        safeLog('🔧 DEBUG: Total scenes to process:', scenesToProcess.length);
+        
+        // Päivitä data scenes-muotoon
+        const processedData = {
+            ...data,
+            scenes: scenesToProcess
+        };
+        delete processedData.presets; // Poista vanhat presetit
+        
+        safeLog('🔧 DEBUG: Processed data for Python:', JSON.stringify(processedData, null, 2));
+        
         // Käytä Python-generaattoria suoraan kuten web-versiossa
         const { spawn } = require('child_process');
         const os = require('os');
@@ -562,14 +644,14 @@ ipcMain.handle('generate-midi', async (event, data) => {
                     const { execSync } = require('child_process');
                     execSync(`${testPath} --version`, { stdio: 'ignore', timeout: 5000 });
                     pythonPath = testPath;
-                    console.log('Windows - Found Python at:', pythonPath);
+                    safeLog('Windows - Found Python at:', pythonPath);
                     break;
                 } catch (e) {
                     // Jatka seuraavaan
                 }
             }
             
-            console.log('Windows detected, using Python command:', pythonPath);
+            safeLog('Windows detected, using Python command:', pythonPath);
         } else {
             pythonPath = 'python3';
         }
@@ -580,27 +662,27 @@ ipcMain.handle('generate-midi', async (event, data) => {
         
         if (process.platform === 'darwin' || process.platform === 'win32') {
             // macOS ja Windows: käytä käyttäjän Documents-hakemistoa
-            workingDir = path.join(os.homedir(), 'Documents', 'MIDI-Fade-Generator');
+            workingDir = path.join(os.homedir(), 'Documents', 'valot');
             await fs.mkdir(workingDir, { recursive: true });
             
             scriptPath = path.join(workingDir, 'valot_python_backend.py');
             
-            console.log(`${process.platform.toUpperCase()} - Working directory:`, workingDir);
-            console.log(`${process.platform.toUpperCase()} - Script path:`, scriptPath);
+            safeLog(`${process.platform.toUpperCase()} - Working directory:`, workingDir);
+            safeLog(`${process.platform.toUpperCase()} - Script path:`, scriptPath);
             
             // Kopioi Python-skripti jos ei ole vielä olemassa
             const bundledScriptPath = path.join(__dirname, 'valot_python_backend.py');
-            console.log(`${process.platform.toUpperCase()} - Bundled script path:`, bundledScriptPath);
+            safeLog(`${process.platform.toUpperCase()} - Bundled script path:`, bundledScriptPath);
             
             try {
                 await fs.access(scriptPath);
-                console.log(`${process.platform.toUpperCase()} - Script already exists at target location`);
+                safeLog(`${process.platform.toUpperCase()} - Script already exists at target location`);
             } catch {
                 // Tiedostoa ei ole, kopioi bundlesta
-                console.log(`${process.platform.toUpperCase()} - Copying script from bundle to user directory`);
+                safeLog(`${process.platform.toUpperCase()} - Copying script from bundle to user directory`);
                 const scriptContent = await fs.readFile(bundledScriptPath, 'utf8');
                 await fs.writeFile(scriptPath, scriptContent);
-                console.log(`${process.platform.toUpperCase()} - Script copied successfully`);
+                safeLog(`${process.platform.toUpperCase()} - Script copied successfully`);
             }
         } else {
             // Linux: käytä bundle-hakemistoa
@@ -615,41 +697,41 @@ ipcMain.handle('generate-midi', async (event, data) => {
             if (path.isAbsolute(data.outputDir)) {
                 // Käyttäjä on valinnut absoluuttisen polun
                 outputDir = data.outputDir;
-                console.log('Using user-selected absolute directory:', outputDir);
+                safeLog('Using user-selected absolute directory:', outputDir);
             } else {
                 // Käyttäjä on kirjoittanut suhteellisen polun - liitä working diriin
                 outputDir = path.join(workingDir, data.outputDir);
-                console.log('Using user-selected relative directory:', data.outputDir, '-> absolute:', outputDir);
+                safeLog('Using user-selected relative directory:', data.outputDir, '-> absolute:', outputDir);
             }
         } else {
             // Käytä johdonmukaista hakemistorakennetta kaikilla alustoilla
             outputDir = path.join(workingDir, 'generated_midi');
-            console.log('Using platform-specific default directory:', outputDir);
+            safeLog('Using platform-specific default directory:', outputDir);
         }
         
         await fs.mkdir(outputDir, { recursive: true });
         
-        // Päivitä data käyttämään oikeaa output-hakemistoa (käytä absoluuttista polkua)
-        const updatedData = { ...data, outputDir: path.resolve(outputDir) };
+        // Päivitä data käyttämään oikeaa output-hakemistoa ja prosessoitua scenes-dataa
+        const updatedData = { ...processedData, outputDir: path.resolve(outputDir) };
         
-        console.log('🔧 DEBUG: Alkuperäinen data.outputDir:', data.outputDir);
-        console.log('🔧 DEBUG: Laskettu outputDir:', outputDir);
-        console.log('🔧 DEBUG: Lopullinen updatedData.outputDir:', updatedData.outputDir);
+        safeLog('🔧 DEBUG: Alkuperäinen data.outputDir:', data.outputDir);
+        safeLog('🔧 DEBUG: Laskettu outputDir:', outputDir);
+        safeLog('🔧 DEBUG: Lopullinen updatedData.outputDir:', updatedData.outputDir);
         
-        console.log('Using Python path:', pythonPath);
-        console.log('Script path:', scriptPath);
-        console.log('Working directory:', workingDir);
-        console.log('Output directory:', outputDir);
+        safeLog('Using Python path:', pythonPath);
+        safeLog('Script path:', scriptPath);
+        safeLog('Working directory:', workingDir);
+        safeLog('Output directory:', outputDir);
         
         // Windows-debugging
         if (process.platform === 'win32') {
-            console.log('Windows - About to spawn Python process...');
-            console.log('Windows - Python command:', pythonPath);
-            console.log('Windows - Script exists?', require('fs').existsSync(scriptPath));
+            safeLog('Windows - About to spawn Python process...');
+            safeLog('Windows - Python command:', pythonPath);
+            safeLog('Windows - Script exists?', require('fs').existsSync(scriptPath));
         }
         
         return new Promise((resolve, reject) => {
-            console.log('Spawning Python process with:', { pythonPath, args: [scriptPath], cwd: workingDir });
+            safeLog('Spawning Python process with:', { pythonPath, args: [scriptPath], cwd: workingDir });
             const python = spawn(pythonPath, [scriptPath], {
                 cwd: workingDir,
                 stdio: ['pipe', 'pipe', 'pipe'],
@@ -662,17 +744,17 @@ ipcMain.handle('generate-midi', async (event, data) => {
             python.stdout.on('data', (data) => {
                 const output = data.toString();
                 stdout += output;
-                console.log('Python stdout:', output);
+                safeLog('Python stdout:', output);
             });
             
             python.stderr.on('data', (data) => {
                 const error = data.toString();
                 stderr += error;
-                console.error('Python stderr:', error);
+                safeLog('Python stderr:', error);
             });
             
             python.on('error', (error) => {
-                console.error('Python spawn error:', error);
+                safeLog('Python spawn error:', error);
                 if (process.platform === 'win32' && error.code === 'ENOENT') {
                     reject(new Error(`Python 3.6+ ei löytynyt Windowsista.\n\nRatkaise ongelma:\n1. Lataa Python 3.6+ osoitteesta https://python.org\n2. Asennuksen aikana valitse "Add Python to PATH"\n3. Asenna midiutil: avaa Command Prompt ja aja "pip install midiutil"\n4. Käynnistä sovellus uudestaan\n\nVirhe: ${error.message}`));
                 } else {
@@ -681,21 +763,21 @@ ipcMain.handle('generate-midi', async (event, data) => {
             });
             
             python.on('close', (code) => {
-                console.log('Python process closed with code:', code);
-                console.log('Full stdout:', stdout);
-                console.log('Full stderr:', stderr);
+                safeLog('Python process closed with code:', code);
+                safeLog('Full stdout:', stdout);
+                safeLog('Full stderr:', stderr);
                 
                 if (code === 0) {
                     try {
                         const result = JSON.parse(stdout);
-                        console.log('✅ Python MIDI generation result:', result);
+                        safeLog('✅ Python MIDI generation result:', result);
                         resolve(result);
                     } catch (parseError) {
-                        console.error('❌ Failed to parse Python output:', stdout);
+                        safeLog('❌ Failed to parse Python output:', stdout);
                         reject(new Error('Failed to parse Python output'));
                     }
                 } else {
-                    console.error('❌ Python process failed:', stderr);
+                    safeLog('❌ Python process failed:', stderr);
                     
                     // Tarkista onko kyse puuttuvasta midiutil-moduulista
                     if (stderr.includes('No module named') && stderr.includes('midiutil')) {
@@ -707,12 +789,15 @@ ipcMain.handle('generate-midi', async (event, data) => {
             });
             
             // Lähetä data Python-skriptille
-            python.stdin.write(JSON.stringify(updatedData));
+            const jsonData = JSON.stringify(updatedData, null, 2);
+            safeLog('🔧 DEBUG: Sending JSON data to Python:', jsonData);
+            
+            python.stdin.write(jsonData);
             python.stdin.end();
         });
         
     } catch (error) {
-        console.error('❌ MIDI generation error:', error);
+        safeLog('❌ MIDI generation error:', error);
         return {
             success: false,
             error: error.message
