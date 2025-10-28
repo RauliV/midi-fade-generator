@@ -1,0 +1,1874 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDI Fade-in/out Generaattori (Python Backend)</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        
+        <!-- Kaunis neon-nuotti yläosaan -->
+        <div class="header-logo">
+            <img src="nuotti.jpg" alt="Neon Music Note" class="music-note-neon">
+        </div>
+        
+        <h1>🎵 MIDI Fade-in/out Generaattori 🎵</h1>
+        
+        <!-- ESITYS OSIO -->
+        <div class="controls" style="margin-bottom: 25px; min-height: 80px; align-items: stretch; position: relative;">
+            <!-- Otsikko täyskorkea vasemmalla -->
+            <div style="background: linear-gradient(135deg, rgba(51, 0, 102, 0.9) 0%, rgba(120, 219, 255, 0.4) 100%); border: 2px solid rgba(120, 219, 255, 0.7); border-radius: 8px; padding: 8px 0; width: 120px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2;">
+                <h2 style="margin: 0; color: #ffffff; font-size: 14px; font-weight: bold; text-shadow: 0 0 10px rgba(120, 219, 255, 0.8); letter-spacing: 1px; text-align: center;">📋<br>Esitys</h2>
+            </div>
+            <!-- Uusi esitys -teksti keskitetty koko palkin leveyteen -->
+            <div style="position: absolute; top: 8px; left: 0; right: 0; display: flex; justify-content: center; z-index: 1;">
+                <div style="background: linear-gradient(135deg, rgba(26, 0, 51, 0.7) 0%, rgba(51, 0, 102, 0.7) 100%); border: 2px solid rgba(120, 219, 255, 0.4); border-radius: 8px; backdrop-filter: blur(5px); padding: 8px;">
+                    <span id="currentPresetName" style="color: #78dbff; font-size: 18px; font-weight: bold; text-shadow: 0 0 8px rgba(120, 219, 255, 0.5); letter-spacing: 1px;">Uusi esitys</span>
+                </div>
+            </div>
+            <!-- Sisältö oikealla -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 3; padding-top: 50px;">
+                <!-- Esityshallinta kontrollit -->
+                <div style="display: flex; gap: 8px; align-items: center; justify-content: center;">
+                        <button class="button" onclick="newPresetWithDialog()" style="font-size: 13px; padding: 6px 10px;">✨ Uusi</button>
+                        <button class="button" onclick="savePreset()" style="font-size: 13px; padding: 6px 10px;">💾 Tallenna</button>
+                        <button class="button" onclick="loadPresetsDialog()" style="font-size: 13px; padding: 6px 10px;">📂 Lataa</button>
+                        <button class="button" onclick="deletePresetsDirectly()" style="font-size: 13px; padding: 6px 10px; background: linear-gradient(45deg, #660033, #ff4466);">🗑️ Poista</button>
+                        <button class="button" onclick="importPresets()" style="font-size: 13px; padding: 6px 10px; background: linear-gradient(45deg, #004466, #4499ff);">� Tuo</button>
+                        <button class="button" onclick="exportPresets()" style="font-size: 13px; padding: 6px 10px; background: linear-gradient(45deg, #006600, #44ff44);">� Vie</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Piilotettu tekstikenttä esityksen nimelle (käytetään tallennuksessa) -->
+        <input type="hidden" id="presetName" value="">
+
+        <!-- MIDI OSIO -->
+        <div class="controls" style="margin-bottom: 15px; min-height: 80px; align-items: stretch;">
+            <!-- Otsikko täyskorkea vasemmalla -->
+            <div style="background: linear-gradient(135deg, rgba(51, 0, 102, 0.9) 0%, rgba(120, 219, 255, 0.4) 100%); border: 2px solid rgba(120, 219, 255, 0.7); border-radius: 8px; padding: 0; width: 120px; display: flex; align-items: center; justify-content: center;">
+                <h2 style="margin: 0; color: #ffffff; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(120, 219, 255, 0.8); letter-spacing: 1px; text-align: center;">🎵<br>MIDI</h2>
+            </div>
+            <!-- Sisältö oikealla -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                <!-- MIDI kontrollit -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <!-- Vasen puoli: Hakemisto -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <div class="steps-control">
+                            <label for="outputDir">Tallennushakemisto:</label>
+                            <input type="text" id="outputDir" value="generated_midi" placeholder="Esim: midifiles tai /Users/user/Documents/MIDI" style="background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(120, 219, 255, 0.5); border-radius: 5px; padding: 8px 12px; color: #78dbff; font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace; width: 350px;" oninput="markAsUnsaved()">
+                        </div>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <button class="button" onclick="selectDirectory()" style="padding: 6px 10px; font-size: 12px;">📁 Selaa</button>
+                            <!-- Polun esikatselu piilossa (päivittyy vain input-kenttään) -->
+                            <span id="previewPath" style="display: none;">generated_midi</span>
+                        </div>
+                    </div>
+                    <!-- Oikea puoli: Askeleet ja nappi päällekkäin -->
+                    <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+                        <div class="steps-control">
+                            <label for="stepsNum">Himmennyksen askeleet:</label>
+                            <input type="number" id="stepsNum" value="20" min="5" max="100" oninput="markAsUnsaved()">
+                        </div>
+                        <button class="button" onclick="generateMIDIs()" id="generateButton">🎵 Generoi MIDI-tiedostot</button>
+                    </div>
+                </div>
+                <!-- Polun ohje -->
+            </div>
+        </div>
+
+        <!-- KOHTAUKSET OSIO -->
+        <div class="controls" style="margin-bottom: 0; min-height: 60px; align-items: center; border-bottom-left-radius: 0; border-bottom-right-radius: 0; position: relative;">
+            <!-- Otsikko täyskorkea vasemmalla -->
+            <div style="background: linear-gradient(135deg, rgba(51, 0, 102, 0.9) 0%, rgba(120, 219, 255, 0.4) 100%); border: 2px solid rgba(120, 219, 255, 0.7); border-radius: 8px; padding: 8px 0; width: 120px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2;">
+                <h2 style="margin: 0; color: #ffffff; font-size: 14px; font-weight: bold; text-shadow: 0 0 10px rgba(120, 219, 255, 0.8); letter-spacing: 1px; text-align: center;">🎭<br>Kohtaukset</h2>
+            </div>
+            <!-- Nappi keskitetty koko palkin leveyteen -->
+            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; z-index: 1;">
+                <button class="button" onclick="addNewScene()">➕ Lisää uusi kohtaus</button>
+            </div>
+        </div>
+
+        <!-- Palautteet - Modal-tyyppinen -->
+        <div id="statusModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: none; z-index: 10000; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;" onclick="closeStatusModal(event)">
+            <div id="statusContent" style="background: linear-gradient(135deg, rgba(26, 0, 51, 0.95) 0%, rgba(51, 0, 102, 0.95) 100%); border: 3px solid rgba(120, 219, 255, 0.8); border-radius: 15px; padding: 20px 25px; text-align: center; box-shadow: 0 0 30px rgba(120, 219, 255, 0.5); backdrop-filter: blur(10px); max-width: 90%; width: auto; max-height: 80%; overflow-y: auto; animation: statusFadeIn 0.3s ease-out;" onclick="event.stopPropagation()">
+                <div id="statusMessage" style="color: #ffffff; font-size: 16px; font-weight: bold; text-shadow: 0 0 10px rgba(120, 219, 255, 0.8); line-height: 1.4; word-wrap: break-word; overflow-wrap: break-word; hyphens: auto;"></div>
+            </div>
+        </div>
+
+        <!-- SCROLLATTAVA KOHTAUSLISTA -->
+        <div class="scenes-container">
+            <div id="scenes"></div>
+        </div>
+        
+        <!-- Latauslinkit -->
+        <div id="downloadLinks" style="display: none;">
+            <h2>📥 Latauslinkit</h2>
+        </div>
+        
+        <!-- Copyright footer -->
+        <div style="text-align: center; margin-top: 20px; padding: 10px; color: #666; font-size: 12px;">
+            © Rauli Virtanen 2025
+        </div>
+    </div>
+
+    <script>
+        let sceneCounter = 0;
+        let hasUnsavedChanges = false;
+        let currentPresetName = '';
+
+        // Merkitse muutokset tallennettuina
+        function markAsSaved() {
+            hasUnsavedChanges = false;
+            updateWindowTitle();
+        }
+
+        // Merkitse muutokset tallentamattomina
+        function markAsUnsaved() {
+            hasUnsavedChanges = true;
+            updateWindowTitle();
+        }
+
+        // Päivitä ikkunan otsikko näyttämään tallennuksen tila
+        function updateWindowTitle() {
+            const title = currentPresetName 
+                ? `🎵 MIDI Fade Generator - ${currentPresetName}${hasUnsavedChanges ? ' *' : ''}`
+                : `🎵 MIDI Fade Generator${hasUnsavedChanges ? ' *' : ''}`;
+            document.title = title;
+        }
+
+        // Tarkista tallentamattomat muutokset ja kysy varmistus
+        async function checkUnsavedChanges(actionDescription = 'jatkaa') {
+            if (!hasUnsavedChanges) {
+                return true; // Ei tallentamattomia muutoksia
+            }
+
+            try {
+                const choice = await showTripleConfirmDialog(
+                    'Tallentamattomia muutoksia',
+                    `Sinulla on tallentamattomia muutoksia. Mitä haluat tehdä ennen kun ${actionDescription}?`,
+                    'Tallenna',
+                    `Jatka tallentamatta`,
+                    'Peruuta'
+                );
+                
+                if (choice === 'save') {
+                    await savePreset();
+                    return true;
+                } else if (choice === 'discard') {
+                    return true;
+                } else {
+                    return false; // Peruuta
+                }
+            } catch (error) {
+                console.error('Error with confirm dialog:', error);
+                // Fallback tavalliseen confirm-dialogiin
+                return confirm(`Sinulla on tallentamattomia muutoksia.\n\nHaluatko ${actionDescription} menettämällä ne?`);
+            }
+        }
+
+        // Uusi esitys -funktio
+        // Uusi esitys dialogilla
+        async function newPresetWithDialog() {
+            const canContinue = await checkUnsavedChanges('luoda uuden esityksen');
+            if (!canContinue) {
+                return;
+            }
+
+            // Kysy esityksen nimi
+            const presetName = await showPromptDialog(
+                'Uusi esitys',
+                'Anna uuden esityksen nimi:',
+                '',
+                'Luo esitys',
+                'Peruuta'
+            );
+
+            if (!presetName || !presetName.trim()) {
+                return; // Peruutettu tai tyhjä nimi
+            }
+
+            // Aseta esityksen nimi
+            document.getElementById('presetName').value = presetName.trim();
+            currentPresetName = presetName.trim();
+            
+            // Päivitä näkyvä otsikko
+            document.getElementById('currentPresetName').textContent = currentPresetName;
+            
+            // Poista kaikki kohtaukset
+            const scenesDiv = document.getElementById('scenes');
+            scenesDiv.innerHTML = '';
+            sceneCounter = 0;
+            
+            // Lisää yksi tyhjä kohtaus
+            addNewScene();
+            
+            // Nollaa tallennuksen tila
+            markAsSaved();
+            
+            showStatus(`✨ Uusi esitys "${currentPresetName}" aloitettu`, 'success');
+        }
+
+        async function newPreset() {
+            const canContinue = await checkUnsavedChanges('luoda uuden esityksen');
+            if (!canContinue) {
+                return;
+            }
+
+            // Tyhjennä kaikki kentät
+            document.getElementById('presetName').value = '';
+            currentPresetName = '';
+            
+            // Päivitä näkyvä otsikko
+            document.getElementById('currentPresetName').textContent = 'Uusi esitys';
+            
+            // Poista kaikki kohtaukset
+            const scenesDiv = document.getElementById('scenes');
+            scenesDiv.innerHTML = '';
+            sceneCounter = 0;
+            
+            // Lisää yksi tyhjä kohtaus
+            addNewScene();
+            
+            // Nollaa tallennuksen tila
+            markAsSaved();
+            
+            showStatus('✨ Uusi esitys aloitettu', 'success');
+        }
+
+        // Poista esityksiä suoraan valintalistalla
+        async function deletePresetsDirectly() {
+            try {
+                // Lataa kaikki esitykset
+                const allPresets = window.electronAPI ? 
+                    await window.electronAPI.loadPresets() :
+                    JSON.parse(localStorage.getItem('presets') || '[]');
+                
+                if (!Array.isArray(allPresets) || allPresets.length === 0) {
+                    showStatus('⚠️ Ei esityksiä poistettavaksi!', 'error');
+                    return;
+                }
+
+                // Näytä valintadialogi poistettaville esityksille
+                const selectedPresets = await showPresetSelectionDialog(
+                    allPresets, 
+                    '🗑️ Valitse poistettavat esitykset',
+                    'Valitse mitkä esitykset haluat poistaa pysyvästi:'
+                );
+                
+                if (!selectedPresets || selectedPresets.length === 0) {
+                    showStatus('Poisto peruutettu - ei valittuja esityksiä.', 'info');
+                    return;
+                }
+
+                // Vahvistus ennen poistoa
+                const confirmDelete = await showConfirmDialog(
+                    'Vahvista poisto',
+                    `Haluatko varmasti poistaa ${selectedPresets.length} esitystä pysyvästi?\n\nPoistettavat esitykset:\n${selectedPresets.map(p => `• ${p.name}`).join('\n')}\n\nTätä toimintoa ei voi peruuttaa.`,
+                    'Poista pysyvästi',
+                    'Peruuta'
+                );
+
+                if (!confirmDelete) {
+                    return;
+                }
+
+                // Poista valitut esitykset
+                if (window.electronAPI) {
+                    // Electron-versio
+                    let successCount = 0;
+                    let errorCount = 0;
+                    
+                    for (const preset of selectedPresets) {
+                        try {
+                            const result = await window.electronAPI.deletePreset(preset.name);
+                            if (result.success) {
+                                successCount++;
+                            } else {
+                                errorCount++;
+                                console.error(`Failed to delete preset ${preset.name}:`, result.error);
+                            }
+                        } catch (error) {
+                            errorCount++;
+                            console.error(`Error deleting preset ${preset.name}:`, error);
+                        }
+                    }
+                    
+                    if (successCount > 0) {
+                        showStatus(`🗑️ ${successCount} esitystä poistettu onnistuneesti!${errorCount > 0 ? ` (${errorCount} epäonnistui)` : ''}`, 'success');
+                    } else {
+                        showStatus('❌ Esitysten poisto epäonnistui.', 'error');
+                    }
+                } else {
+                    // Web-versio
+                    const presets = JSON.parse(localStorage.getItem('presets') || '[]');
+                    const namesToDelete = selectedPresets.map(p => p.name);
+                    const updatedPresets = presets.filter(p => !namesToDelete.includes(p.name));
+                    localStorage.setItem('presets', JSON.stringify(updatedPresets));
+                    
+                    showStatus(`🗑️ ${selectedPresets.length} esitystä poistettu onnistuneesti!`, 'success');
+                }
+                
+                // Tyhjennä nykyinen esitys jos se oli poistettujen joukossa
+                const currentName = document.getElementById('presetName').value.trim();
+                if (currentName && selectedPresets.some(p => p.name === currentName)) {
+                    // Tyhjennä lomake mutta älä aloita uutta esitystä
+                    document.getElementById('presetName').value = '';
+                    document.getElementById('currentPresetName').textContent = 'Ei esitystä';
+                    currentPresetName = '';
+                    
+                    // Poista kaikki kohtaukset
+                    const scenesDiv = document.getElementById('scenes');
+                    scenesDiv.innerHTML = '';
+                    sceneCounter = 0;
+                    
+                    markAsSaved();
+                }
+                
+            } catch (error) {
+                console.error('Delete error:', error);
+                showStatus(`❌ Virhe poistossa: ${error.message}`, 'error');
+            }
+        }
+
+        // Poista esitys -funktio vaihtoehdoilla
+        async function deletePresetWithOptions() {
+            // Kysy käyttäjältä mitä haluaa tehdä
+            const choice = await showChoiceDialog(
+                'Poista esityksiä',
+                'Mitä haluat tehdä?',
+                [
+                    { text: '🗑️ Poista nykyinen esitys', value: 'current' },
+                    { text: '🗂️ Poista useita esityksiä', value: 'multiple' }
+                ],
+                'Peruuta'
+            );
+
+            if (choice === 'current') {
+                await deleteCurrentPreset();
+            } else if (choice === 'multiple') {
+                await bulkDeletePresets();
+            }
+        }
+
+        // Poista nykyinen esitys
+        async function deleteCurrentPreset() {
+            const presetName = document.getElementById('presetName').value.trim();
+            if (!presetName) {
+                showStatus('⚠️ Ei aktiivista esitystä poistettavaksi!', 'error');
+                return;
+            }
+
+            try {
+                const confirmDelete = await showConfirmDialog(
+                    'Poista esitys',
+                    `Haluatko varmasti poistaa esityksen "${presetName}"?\n\nTätä toimintoa ei voi peruuttaa.`,
+                    'Poista pysyvästi',
+                    'Peruuta'
+                );
+
+                if (!confirmDelete) {
+                    return;
+                }
+
+                if (window.electronAPI) {
+                    const result = await window.electronAPI.deletePreset(presetName);
+                    
+                    if (result.success) {
+                        showStatus(`Esitys "${presetName}" poistettu onnistuneesti!`, 'success');
+                        
+                        // Aloita uusi esitys
+                        await newPresetWithDialog();
+                    } else {
+                        throw new Error(result.error || 'Poisto epäonnistui');
+                    }
+                } else {
+                    // Web-versio
+                    const presets = JSON.parse(localStorage.getItem('presets') || '[]');
+                    const updatedPresets = presets.filter(p => p.name !== presetName);
+                    localStorage.setItem('presets', JSON.stringify(updatedPresets));
+                    
+                    showStatus(`Esitys "${presetName}" poistettu onnistuneesti!`, 'success');
+                    
+                    // Aloita uusi esitys
+                    await newPresetWithDialog();
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                showStatus(`Virhe poistossa: ${error.message}`, 'error');
+            }
+        }
+
+        // Poista esitys -funktio (vanha, säilytetään yhteensopivuuden vuoksi)
+        async function deletePreset() {
+            const presetName = document.getElementById('presetName').value.trim();
+            if (!presetName) {
+                showStatus('⚠️ Anna poistettavan esityksen nimi!', 'error');
+                return;
+            }
+
+            try {
+                const confirmDelete = await showConfirmDialog(
+                    'Poista esitys',
+                    `Haluatko varmasti poistaa esityksen "${presetName}"?\n\nTätä toimintoa ei voi peruuttaa.`,
+                    'Poista pysyvästi',
+                    'Peruuta'
+                );
+
+                if (!confirmDelete) {
+                    return;
+                }
+
+                const result = await window.electronAPI.deletePreset(presetName);
+                
+                if (result.success) {
+                    showStatus(`Esitys "${presetName}" poistettu onnistuneesti!`, 'success');
+                    
+                    // Jos poistettu esitys on tällä hetkellä aktiivinen, aloita uusi
+                    if (currentPresetName === presetName) {
+                        newPreset();
+                    }
+                } else {
+                    throw new Error(result.error || 'Poisto epäonnistui');
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                showStatus(`Virhe poistossa: ${error.message}`, 'error');
+            }
+        }
+
+        // Poista useita esityksiä kerralla
+        async function bulkDeletePresets() {
+            try {
+                let allPresets = [];
+                
+                if (window.electronAPI) {
+                    // Electron-versio: hae esitykset
+                    const result = await window.electronAPI.loadPresets();
+                    
+                    if (Array.isArray(result)) {
+                        allPresets = result;
+                    } else {
+                        throw new Error('Esitysten lataus epäonnistui');
+                    }
+                } else {
+                    // Web-versio: hae lokalista storagesta
+                    allPresets = JSON.parse(localStorage.getItem('presets') || '[]');
+                }
+                
+                if (!Array.isArray(allPresets) || allPresets.length === 0) {
+                    showStatus('⚠️ Ei esityksiä poistettavaksi!', 'error');
+                    return;
+                }
+                
+                // Näytä valintadialogi
+                const selectedPresets = await showPresetSelectionDialog(
+                    allPresets, 
+                    '🗑️ Valitse poistettavat esitykset',
+                    '⚠️ Valitse mitkä esitykset haluat poistaa pysyvästi:'
+                );
+                
+                if (!selectedPresets || selectedPresets.length === 0) {
+                    showStatus('Poisto peruutettu - ei valittuja esityksiä.', 'info');
+                    return;
+                }
+                
+                // Varmista poisto
+                const confirmDelete = await showConfirmDialog(
+                    'Poista esitykset',
+                    `Haluatko varmasti poistaa ${selectedPresets.length} esitystä?\n\nTätä toimintoa ei voi peruuttaa.\n\nPoistettavat esitykset:\n${selectedPresets.map(p => `• ${p.name}`).join('\n')}`,
+                    'Poista pysyvästi',
+                    'Peruuta'
+                );
+
+                if (!confirmDelete) {
+                    return;
+                }
+                
+                // Poista valitut esitykset
+                if (window.electronAPI) {
+                    // Electron-versio: poista yksi kerrallaan
+                    let deletedCount = 0;
+                    let errorCount = 0;
+                    
+                    for (const preset of selectedPresets) {
+                        try {
+                            const result = await window.electronAPI.deletePreset(preset.name);
+                            if (result.success) {
+                                deletedCount++;
+                            } else {
+                                errorCount++;
+                            }
+                        } catch (error) {
+                            errorCount++;
+                        }
+                    }
+                    
+                    if (deletedCount > 0) {
+                        showStatus(`🗑️ ${deletedCount} esitystä poistettu onnistuneesti!${errorCount > 0 ? `\n⚠️ ${errorCount} poistoa epäonnistui.` : ''}`, deletedCount > errorCount ? 'success' : 'error');
+                        
+                        // Jos nykyinen esitys poistettiin, aloita uusi
+                        const currentName = currentPresetName;
+                        if (selectedPresets.some(p => p.name === currentName)) {
+                            newPreset();
+                        }
+                    } else {
+                        showStatus(`⚠️ Kaikkien esitysten poisto epäonnistui!`, 'error');
+                    }
+                } else {
+                    // Web-versio: poista localStoragesta
+                    const currentPresets = JSON.parse(localStorage.getItem('presets') || '[]');
+                    const selectedNames = selectedPresets.map(p => p.name);
+                    const filteredPresets = currentPresets.filter(p => !selectedNames.includes(p.name));
+                    
+                    localStorage.setItem('presets', JSON.stringify(filteredPresets));
+                    
+                    showStatus(`🗑️ ${selectedPresets.length} esitystä poistettu onnistuneesti!`, 'success');
+                    
+                    // Jos nykyinen esitys poistettiin, aloita uusi
+                    const currentName = currentPresetName;
+                    if (selectedNames.includes(currentName)) {
+                        newPreset();
+                    }
+                }
+            } catch (error) {
+                console.error('Bulk delete error:', error);
+                showStatus(`Virhe massan poistossa: ${error.message}`, 'error');
+            }
+        }
+
+        // Näytä esitysten valintadialogi
+        async function showPresetSelectionDialog(presets, title, message) {
+            return new Promise((resolve) => {
+                // Tarkista että presets on kelvollinen
+                if (!presets || !Array.isArray(presets)) {
+                    console.error('Invalid presets parameter:', presets);
+                    resolve(null);
+                    return;
+                }
+                
+                if (presets.length === 0) {
+                    resolve(null);
+                    return;
+                }
+                
+                // Luo modal-dialogi
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.style.cssText = `
+                    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px);
+                    display: flex; align-items: center; justify-content: center;
+                    z-index: 1000;
+                `;
+
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    background: linear-gradient(135deg, #1a0033 0%, #330066 50%, #000033 100%);
+                    border: 2px solid rgba(120, 219, 255, 0.7);
+                    border-radius: 15px; padding: 25px; max-width: 500px; width: 90%;
+                    color: #ffffff; text-align: center; max-height: 80vh; overflow-y: auto;
+                    box-shadow: 0 0 30px rgba(120, 219, 255, 0.3);
+                `;
+
+                dialog.innerHTML = `
+                    <h3 style="margin: 0 0 20px 0; color: #78dbff; text-shadow: 0 0 10px rgba(120, 219, 255, 0.8);">${title}</h3>
+                    <p style="margin: 0 0 20px 0; color: #cccccc; line-height: 1.4;">${message}</p>
+                    
+                    <div style="text-align: left; margin: 15px 0; max-height: 300px; overflow-y: auto; border: 1px solid rgba(120, 219, 255, 0.3); border-radius: 8px; padding: 10px; background: rgba(0, 0, 0, 0.3);">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: flex; align-items: center; gap: 8px; color: #78dbff; font-weight: bold; margin-bottom: 10px;">
+                                <input type="checkbox" id="selectAll" style="transform: scale(1.2);">
+                                Valitse kaikki / Poista kaikki valinnat
+                            </label>
+                        </div>
+                        <div id="presetList">
+                            ${presets.map((preset, index) => `
+                                <label style="display: flex; align-items: center; gap: 8px; margin: 8px 0; padding: 8px; border-radius: 5px; background: rgba(120, 219, 255, 0.1); cursor: pointer;">
+                                    <input type="checkbox" value="${preset.name || 'Nimetön'}" data-index="${index}" class="preset-checkbox" style="transform: scale(1.1);">
+                                    <span style="color: #ffffff; flex: 1;">${preset.name || 'Nimetön esitys'}</span>
+                                    <span style="color: #78dbff; font-size: 11px; opacity: 0.8;">${preset.scenes ? preset.scenes.length : 0} kohtausta</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
+                        <button id="confirmSelection" class="button" style="background: linear-gradient(45deg, #006600, #44ff44); padding: 12px 20px;">✅ Valitse merkityt</button>
+                        <button id="cancelSelection" class="button" style="background: linear-gradient(45deg, #666666, #999999); padding: 12px 20px;">❌ Peruuta</button>
+                    </div>
+                `;
+
+                modal.appendChild(dialog);
+                document.body.appendChild(modal);
+
+                // Valitse kaikki -toiminto
+                const selectAllCheckbox = dialog.querySelector('#selectAll');
+                const presetCheckboxes = dialog.querySelectorAll('.preset-checkbox');
+                
+                selectAllCheckbox.addEventListener('change', (e) => {
+                    presetCheckboxes.forEach(checkbox => {
+                        checkbox.checked = e.target.checked;
+                    });
+                });
+                
+                // Tarkista onko kaikki valittu
+                presetCheckboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', () => {
+                        const allChecked = Array.from(presetCheckboxes).every(cb => cb.checked);
+                        const noneChecked = Array.from(presetCheckboxes).every(cb => !cb.checked);
+                        selectAllCheckbox.indeterminate = !allChecked && !noneChecked;
+                        selectAllCheckbox.checked = allChecked;
+                    });
+                });
+
+                // Vahvista valinta
+                dialog.querySelector('#confirmSelection').addEventListener('click', () => {
+                    const selectedIndexes = Array.from(presetCheckboxes)
+                        .filter(cb => cb.checked)
+                        .map(cb => parseInt(cb.dataset.index));
+                    
+                    const selectedPresets = selectedIndexes.map(index => presets[index]);
+                    document.body.removeChild(modal);
+                    resolve(selectedPresets);
+                });
+
+                // Peruuta
+                dialog.querySelector('#cancelSelection').addEventListener('click', () => {
+                    document.body.removeChild(modal);
+                    resolve(null);
+                });
+
+                // ESC-näppäin peruuttaa
+                modal.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        document.body.removeChild(modal);
+                        resolve(null);
+                    }
+                });
+
+                // Fokus modaliin
+                modal.focus();
+                modal.tabIndex = -1;
+            });
+        }
+
+        // Vie esitykset tiedostoon
+        async function exportPresets() {
+            try {
+                let allPresets = [];
+                
+                if (window.electronAPI) {
+                    // Electron-versio: hae esitykset (palauttaa suoraan arrayn)
+                    const result = await window.electronAPI.loadPresets();
+                    
+                    if (Array.isArray(result)) {
+                        allPresets = result;
+                    } else {
+                        throw new Error('Esitysten lataus palautti virheellisen datan');
+                    }
+                } else {
+                    // Web-versio: hae lokalista storagesta
+                    allPresets = JSON.parse(localStorage.getItem('presets') || '[]');
+                }
+                
+                if (!Array.isArray(allPresets) || allPresets.length === 0) {
+                    showStatus('⚠️ Ei esityksiä vietäväksi!', 'error');
+                    return;
+                }
+                
+                // Näytä valintadialogi
+                const selectedPresets = await showPresetSelectionDialog(
+                    allPresets, 
+                    '📤 Valitse vietävät esitykset',
+                    'Valitse mitkä esitykset haluat viedä tiedostoon:'
+                );
+                
+                if (!selectedPresets || selectedPresets.length === 0) {
+                    showStatus('Vienti peruutettu - ei valittuja esityksiä.', 'info');
+                    return;
+                }
+
+                if (window.electronAPI) {
+                    // Electron-versio: käytä modifioitua export-funktiota
+                    const result = await window.electronAPI.exportSelectedPresets(selectedPresets);
+                    
+                    if (result.success) {
+                        showStatus(`📤 Esitykset viety onnistuneesti: ${result.filename}\n${result.count} esitystä viety.`, 'success');
+                    } else {
+                        throw new Error(result.error || 'Vienti epäonnistui');
+                    }
+                } else {
+                    // Web-versio: lataa JSON-tiedosto
+                    const exportData = {
+                        exported: new Date().toISOString(),
+                        version: '1.0.0',
+                        presets: selectedPresets
+                    };
+                    
+                    const jsonString = JSON.stringify(exportData, null, 2);
+                    const blob = new Blob([jsonString], { type: 'application/json' });
+                    
+                    // Luo download-linkki
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `esitykset-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    
+                    // Automaattinen lataus
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    showStatus(`📤 Esitykset viety onnistuneesti!\n${selectedPresets.length} esitystä ladattu tiedostoon.`, 'success');
+                }
+            } catch (error) {
+                console.error('Export error:', error);
+                showStatus(`Virhe viennissä: ${error.message}`, 'error');
+            }
+        }
+
+        // Tuo esitykset tiedostosta
+        async function importPresets() {
+            try {
+                if (window.electronAPI) {
+                    // Electron-versio: tiedostovalinta ja esikatselu
+                    const result = await window.electronAPI.previewImportPresets();
+                    
+                    if (!result || !result.success) {
+                        if (result && result.error && result.error !== 'Tuonti peruutettu') {
+                            throw new Error(result.error || 'Tiedoston lataus epäonnistui');
+                        }
+                        return;
+                    }
+                    
+                    // Tarkista että presets on kelvollinen
+                    if (!result.presets || !Array.isArray(result.presets) || result.presets.length === 0) {
+                        showStatus('⚠️ Tiedostossa ei ole kelvollisia esityksiä!', 'error');
+                        return;
+                    }
+                    
+                    // Näytä valintadialogi tuoduille esityksille
+                    const selectedPresets = await showPresetSelectionDialog(
+                        result.presets, 
+                        '📥 Valitse tuotavat esitykset',
+                        `Tiedosto: ${result.filename}\nValitse mitkä esitykset haluat tuoda:`
+                    );
+                    
+                    if (!selectedPresets || selectedPresets.length === 0) {
+                        showStatus('Tuonti peruutettu - ei valittuja esityksiä.', 'info');
+                        return;
+                    }
+                    
+                    // Tuo valitut esitykset
+                    console.log('Importing selected presets:', selectedPresets);
+                    const importResult = await window.electronAPI.importSelectedPresets(selectedPresets);
+                    console.log('Import result:', importResult);
+                    
+                    if (importResult && importResult.success) {
+                        showStatus(`📥 Esitykset tuotu onnistuneesti!\n${importResult.imported || 0} esitystä tuotu, ${importResult.existing || 0} oli jo olemassa.`, 'success');
+                        
+                        // EI ladata mitään esitystä automaattisesti - käyttäjä valitsee itse
+                    } else {
+                        throw new Error(importResult?.error || 'Tuonti epäonnistui');
+                    }
+                } else {
+                    // Web-versio: tiedostovalinta
+                    const confirmImport = await showConfirmDialog(
+                        'Tuo esitykset',
+                        'Haluatko tuoda esitykset JSON-tiedostosta?',
+                        'Valitse tiedosto',
+                        'Peruuta'
+                    );
+
+                    if (!confirmImport) {
+                        return;
+                    }
+                    
+                    // Luo piilotetu file input
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.accept = '.json';
+                    fileInput.style.display = 'none';
+                    
+                    fileInput.onchange = async (event) => {
+                        try {
+                            const file = event.target.files[0];
+                            if (!file) return;
+                            
+                            const reader = new FileReader();
+                            reader.onload = async (e) => {
+                                try {
+                                    const importData = JSON.parse(e.target.result);
+                                    
+                                    // Tarkista tiedoston formaatti
+                                    let importPresets = [];
+                                    if (importData.presets && Array.isArray(importData.presets)) {
+                                        importPresets = importData.presets;
+                                    } else if (Array.isArray(importData)) {
+                                        importPresets = importData;
+                                    } else {
+                                        throw new Error('Tuntematon tiedostoformaatti');
+                                    }
+                                    
+                                    if (importPresets.length === 0) {
+                                        showStatus('⚠️ Tiedostossa ei ole esityksiä!', 'error');
+                                        return;
+                                    }
+                                    
+                                    // Näytä valintadialogi
+                                    const selectedPresets = await showPresetSelectionDialog(
+                                        importPresets, 
+                                        '📥 Valitse tuotavat esitykset',
+                                        `Tiedosto: ${file.name}\nValitse mitkä esitykset haluat tuoda:`
+                                    );
+                                    
+                                    if (!selectedPresets || selectedPresets.length === 0) {
+                                        showStatus('Tuonti peruutettu - ei valittuja esityksiä.', 'info');
+                                        return;
+                                    }
+                                    
+                                    const currentPresets = JSON.parse(localStorage.getItem('presets') || '[]');
+                                    let importedCount = 0;
+                                    let existingCount = 0;
+                                    let firstImported = null;
+                                    
+                                    // Yhdistä valitut esitykset nykyisiin
+                                    for (const importPreset of selectedPresets) {
+                                        const existingIndex = currentPresets.findIndex(p => p.name === importPreset.name);
+                                        
+                                        if (existingIndex >= 0) {
+                                            // Päivitä olemassa oleva esitys
+                                            currentPresets[existingIndex] = { ...importPreset };
+                                            existingCount++;
+                                        } else {
+                                            // Lisää uusi esitys
+                                            currentPresets.push({ ...importPreset });
+                                            importedCount++;
+                                            if (!firstImported) {
+                                                firstImported = importPreset.name;
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Tallenna päivitetyt esitykset
+                                    localStorage.setItem('presets', JSON.stringify(currentPresets));
+                                    
+                                    showStatus(`📥 Esitykset tuotu onnistuneesti: ${file.name}\n${importedCount} esitystä tuotu, ${existingCount} oli jo olemassa.`, 'success');
+                                    
+                                    // EI ladata mitään esitystä automaattisesti - käyttäjä valitsee itse
+                                } catch (parseError) {
+                                    showStatus(`Virhe tiedoston lukemisessa: ${parseError.message}`, 'error');
+                                }
+                            };
+                            reader.readAsText(file);
+                        } catch (fileError) {
+                            showStatus(`Virhe tiedostossa: ${fileError.message}`, 'error');
+                        }
+                    };
+                    
+                    document.body.appendChild(fileInput);
+                    fileInput.click();
+                    document.body.removeChild(fileInput);
+                }
+            } catch (error) {
+                console.error('Import error:', error);
+                showStatus(`Virhe tuonnissa: ${error.message}`, 'error');
+            }
+        }
+
+        async function updatePathPreview() {
+            // Ei enää tarvita - polku näkyy suoraan input-kentässä
+            // Funktio pidetään yhteensopivuuden vuoksi
+        }
+
+        async function selectDirectory() {
+            if (window.electronAPI) {
+                try {
+                    const selectedPath = await window.electronAPI.selectDirectory();
+                    if (selectedPath) {
+                        // Käytä valittua polkua sellaisenaan - päivitä input-kenttä
+                        console.log('Selected absolute path:', selectedPath);
+                        
+                        // Aseta polku input-kenttään
+                        document.getElementById('outputDir').value = selectedPath;
+                        markAsUnsaved();
+                        showStatus(`Hakemisto valittu: ${selectedPath}`, 'success');
+                    }
+                } catch (error) {
+                    console.error('Virhe hakemistovalinnassa:', error);
+                    showStatus('Virhe hakemistovalinnassa', 'error');
+                }
+            } else {
+                showStatus('Hakemistovalinta toimii vain Electron-sovelluksessa', 'info');
+            }
+        }
+
+        function addNewScene() {
+            sceneCounter++;
+            const scenesDiv = document.getElementById('scenes');
+            const sceneDiv = document.createElement('div');
+            sceneDiv.className = 'scene-container';
+            sceneDiv.innerHTML = `
+                <div class="scene-header">
+                    <span style="color: #ff6b9d; font-weight: bold; font-size: 16px; margin-right: 8px;">#${sceneCounter}</span>
+                    <input type="text" class="scene-name" placeholder="Kohtauksen nimi" required oninput="markAsUnsaved()">
+                    <button class="button remove-button" onclick="removeScene(this)">🗑️ Poista</button>
+                </div>
+                
+                <div class="fade-container">
+                    <label>Fade-in kesto (s):</label>
+                    <input type="number" class="fade-input" value="1.0" step="0.1" min="0.1" oninput="markAsUnsaved()">
+                    <label>Fade-out kesto (s):</label>
+                    <input type="number" class="fade-input" value="1.0" step="0.1" min="0.1" oninput="markAsUnsaved()">
+                </div>
+                
+                <div class="channel-container">
+                    <div class="channel-row">
+                        <label>Kanava:</label>
+                        <input type="number" class="channel-input" value="1" min="1" max="100" oninput="markAsUnsaved()">
+                        <label>Arvo (0-127):</label>
+                        <input type="number" class="velocity-input" value="127" min="0" max="127" oninput="markAsUnsaved()">
+                        <button class="button remove-button" onclick="removeChannel(this)">❌</button>
+                    </div>
+                    <button class="button" onclick="addChannel(this)" style="margin-top: 6px; font-size: 12px; padding: 4px 8px;">➕ Lisää kanava</button>
+                </div>
+            `;
+            scenesDiv.appendChild(sceneDiv);
+            
+            // Merkitse muutokset
+            markAsUnsaved();
+            
+            // Skrollaa uuteen kohtaukseen
+            setTimeout(() => {
+                sceneDiv.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                // Fokusoi nimen syöttökenttään
+                const nameInput = sceneDiv.querySelector('.scene-name');
+                if (nameInput) {
+                    nameInput.focus();
+                }
+            }, 100);
+        }
+
+        function removeScene(button) {
+            button.closest('.scene-container').remove();
+            renumberScenes();
+            markAsUnsaved();
+        }
+
+        function renumberScenes() {
+            const scenes = document.querySelectorAll('.scene-container');
+            scenes.forEach((scene, index) => {
+                const numberSpan = scene.querySelector('.scene-header span');
+                if (numberSpan) {
+                    numberSpan.textContent = `#${index + 1}`;
+                }
+            });
+            sceneCounter = scenes.length;
+        }
+
+        function addChannel(button) {
+            const channelContainer = button.parentElement;
+            const newChannelRow = document.createElement('div');
+            newChannelRow.className = 'channel-row';
+            newChannelRow.innerHTML = `
+                <label>Kanava:</label>
+                <input type="number" class="channel-input" value="1" min="1" max="100" oninput="markAsUnsaved()">
+                <label>Arvo (0-127):</label>
+                <input type="number" class="velocity-input" value="127" min="0" max="127" oninput="markAsUnsaved()">
+                <button class="button remove-button" onclick="removeChannel(this)">❌</button>
+            `;
+            channelContainer.insertBefore(newChannelRow, button);
+            markAsUnsaved();
+        }
+
+        function removeChannel(button) {
+            button.closest('.channel-row').remove();
+            markAsUnsaved();
+        }
+
+        async function savePreset() {
+            let presetName = document.getElementById('presetName').value.trim();
+            
+            // Jos nimeä ei ole, kysy sitä
+            if (!presetName) {
+                presetName = await showPromptDialog(
+                    'Tallenna esitys',
+                    'Anna esitykselle nimi:',
+                    '',
+                    'Tallenna',
+                    'Peruuta'
+                );
+                
+                if (!presetName || !presetName.trim()) {
+                    return; // Peruutettu tai tyhjä nimi
+                }
+                
+                presetName = presetName.trim();
+                // Päivitä nimi piilokentään ja näkyvään otsikkoon
+                document.getElementById('presetName').value = presetName;
+                currentPresetName = presetName;
+                document.getElementById('currentPresetName').textContent = currentPresetName;
+            }
+
+            // Tarkista onko samanniminen esitys jo olemassa
+            try {
+                let existingPresets = [];
+                
+                if (window.electronAPI) {
+                    // Electron-versio
+                    existingPresets = await window.electronAPI.loadPresets();
+                } else {
+                    // Web-versio
+                    existingPresets = JSON.parse(localStorage.getItem('presets') || '[]');
+                }
+                
+                console.log('Existing presets:', existingPresets.map(p => p.name));
+                const existingPreset = existingPresets.find(p => p.name === presetName);
+                console.log('Found existing preset:', existingPreset ? 'YES' : 'NO');
+                
+                if (existingPreset) {
+                    console.log('Showing confirm dialog...');
+                    try {
+                        const confirmOverwrite = await showConfirmDialog(
+                            `Esitys "${presetName}" on jo olemassa`,
+                            `Haluatko korvata sen uudella versiolla?`,
+                            'Korvaa',
+                            'Peruuta'
+                        );
+                        console.log('Confirm result:', confirmOverwrite);
+                        if (!confirmOverwrite) {
+                            console.log('User cancelled save');
+                            return; // Käyttäjä peruutti tallennuksen
+                        }
+                    } catch (error) {
+                        console.error('Error with confirm dialog:', error);
+                        // Fallback tavalliseen confirm-dialogiin
+                        const confirmOverwrite = confirm(`Esitys "${presetName}" on jo olemassa.\n\nHaluatko korvata sen uudella versiolla?`);
+                        if (!confirmOverwrite) {
+                            return;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn('Virhe tarkistettaessa olemassa olevia esityksiä:', error);
+                // Jatkaa tallennusta jos tarkistus epäonnistuu
+            }
+
+            const scenes = document.querySelectorAll('.scene-container');
+            const scenesData = [];
+            const steps = parseInt(document.getElementById('stepsNum').value) || 20;
+
+            scenes.forEach(sceneDiv => {
+                const sceneName = sceneDiv.querySelector('.scene-name').value.trim();
+                if (!sceneName) return;
+                
+                const fadeInputs = sceneDiv.querySelectorAll('.fade-input');
+                const fadeInDuration = parseFloat(fadeInputs[0].value) || 1.0;
+                const fadeOutDuration = parseFloat(fadeInputs[1].value) || 1.0;
+                
+                const channelRows = sceneDiv.querySelectorAll('.channel-row');
+                const channels = {};
+                
+                channelRows.forEach(row => {
+                    const channelInput = row.querySelector('.channel-input');
+                    const velocityInput = row.querySelector('.velocity-input');
+                    if (channelInput && velocityInput) {
+                        const channel = parseInt(channelInput.value);
+                        const velocity = parseInt(velocityInput.value);
+                        if (channel && velocity >= 0) {
+                            channels[channel] = velocity;
+                        }
+                    }
+                });
+
+                if (Object.keys(channels).length > 0) {
+                    scenesData.push({
+                        name: sceneName,
+                        channels: channels,
+                        fade_in_duration: fadeInDuration,
+                        fade_out_duration: fadeOutDuration
+                    });
+                }
+            });
+
+            if (scenesData.length === 0) {
+                showStatus('⚠️ Ei tallennettavia kohtauksia!', 'error');
+                return;
+            }
+
+            try {
+                if (window.electronAPI) {
+                    // Electron-versio
+                    const result = await window.electronAPI.savePreset({
+                        name: presetName,
+                        scenes: scenesData,
+                        steps: steps
+                    });
+
+                    if (result.success) {
+                        showStatus(`Esitys "${presetName}" tallennettu onnistuneesti!`, 'success');
+                        document.getElementById('currentPresetName').textContent = presetName;
+                        currentPresetName = presetName;
+                        markAsSaved(); // Merkitse tallennetuksi
+                    } else {
+                        throw new Error(result.error || 'Tallennusvirhe');
+                    }
+                } else {
+                    // Web-versio: tallenna localStorageen
+                    const presets = JSON.parse(localStorage.getItem('presets') || '[]');
+                    const presetData = {
+                        name: presetName,
+                        scenes: scenesData,
+                        steps: steps
+                    };
+                    
+                    const existingIndex = presets.findIndex(p => p.name === presetName);
+                    if (existingIndex >= 0) {
+                        presets[existingIndex] = presetData;
+                    } else {
+                        presets.push(presetData);
+                    }
+                    
+                    localStorage.setItem('presets', JSON.stringify(presets));
+                    
+                    showStatus(`Esitys "${presetName}" tallennettu onnistuneesti!`, 'success');
+                    document.getElementById('currentPresetName').textContent = presetName;
+                    currentPresetName = presetName;
+                    markAsSaved(); // Merkitse tallennetuksi
+                }
+            } catch (error) {
+                showStatus(`Virhe tallennuksessa: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadPresetsDialog() {
+            // Tarkista tallentamattomat muutokset ennen latausta
+            const canContinue = await checkUnsavedChanges('ladata toisen esityksen');
+            if (!canContinue) {
+                return;
+            }
+            
+            try {
+                let presets = [];
+                
+                if (window.electronAPI) {
+                    // Electron-versio
+                    presets = await window.electronAPI.loadPresets();
+                } else {
+                    // Web-versio
+                    presets = JSON.parse(localStorage.getItem('presets') || '[]');
+                }
+
+                if (presets.length === 0) {
+                    showStatus('⚠️ Ei tallennettuja esityksiä!', 'error');
+                    return;
+                }
+
+                // Luodaan teeman mukainen dialogi
+                const dialogOverlay = document.createElement('div');
+                dialogOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 2000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    background: linear-gradient(135deg, rgba(26, 0, 51, 0.95) 0%, rgba(51, 0, 102, 0.95) 100%);
+                    border: 2px solid #8a2be2;
+                    border-radius: 15px;
+                    padding: 20px;
+                    max-width: 500px;
+                    max-height: 70vh;
+                    overflow-y: auto;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+                `;
+
+                dialog.innerHTML = `
+                    <h3 style="color: #78dbff; margin-top: 0; text-align: center;">📂 Valitse ladattava esitys</h3>
+                    <div id="presetList"></div>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button class="button" onclick="this.closest('.dialog-overlay').remove()" style="background: linear-gradient(45deg, #660033, #ff4466);">❌ Peruuta</button>
+                    </div>
+                `;
+
+                const presetList = dialog.querySelector('#presetList');
+                presets.forEach((preset, index) => {
+                    const presetItem = document.createElement('div');
+                    presetItem.style.cssText = `
+                        background: rgba(0, 0, 0, 0.5);
+                        border: 1px solid rgba(120, 219, 255, 0.3);
+                        border-radius: 8px;
+                        padding: 12px;
+                        margin: 8px 0;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                    `;
+                    
+                    presetItem.innerHTML = `
+                        <div style="color: #78dbff; font-weight: bold; font-size: 16px;">${preset.name}</div>
+                        <div style="color: #ff6b9d; font-size: 14px;">${preset.scenes.length} kohtausta</div>
+                        <div style="color: #888; font-size: 12px;">${preset.saved_at ? new Date(preset.saved_at).toLocaleString() : 'Ei aikaleimaa'}</div>
+                    `;
+                    
+                    presetItem.addEventListener('mouseenter', () => {
+                        presetItem.style.background = 'rgba(120, 219, 255, 0.2)';
+                        presetItem.style.borderColor = 'rgba(120, 219, 255, 0.7)';
+                    });
+                    
+                    presetItem.addEventListener('mouseleave', () => {
+                        presetItem.style.background = 'rgba(0, 0, 0, 0.5)';
+                        presetItem.style.borderColor = 'rgba(120, 219, 255, 0.3)';
+                    });
+                    
+                    presetItem.addEventListener('click', () => {
+                        loadPreset(preset);
+                        dialogOverlay.remove();
+                    });
+                    
+                    presetList.appendChild(presetItem);
+                });
+
+                dialogOverlay.className = 'dialog-overlay';
+                dialogOverlay.appendChild(dialog);
+                document.body.appendChild(dialogOverlay);
+
+            } catch (error) {
+                showStatus(`Virhe esitysten latauksessa: ${error.message}`, 'error');
+            }
+        }
+
+        function loadPreset(preset) {
+            // Tyhjennä nykyiset kohtaukset
+            document.getElementById('scenes').innerHTML = '';
+            sceneCounter = 0;
+            
+            // Aseta esityksen nimi näkyviin ja tallennuskenttään
+            document.getElementById('currentPresetName').textContent = preset.name;
+            document.getElementById('presetName').value = preset.name;
+            currentPresetName = preset.name;
+            
+            // Aseta steppien määrä
+            document.getElementById('stepsNum').value = preset.steps || 20;
+            
+            // Lataa kohtaukset
+            preset.scenes.forEach(sceneData => {
+                addNewScene();
+                const sceneContainers = document.querySelectorAll('.scene-container');
+                const lastContainer = sceneContainers[sceneContainers.length - 1];
+                
+                // Aseta kohtauksen nimi
+                lastContainer.querySelector('.scene-name').value = sceneData.name;
+                
+                // Aseta fade-ajat
+                const fadeInputs = lastContainer.querySelectorAll('.fade-input');
+                fadeInputs[0].value = sceneData.fade_in_duration;
+                fadeInputs[1].value = sceneData.fade_out_duration;
+                
+                // Poista oletuskanava
+                const defaultChannel = lastContainer.querySelector('.channel-row');
+                defaultChannel.remove();
+                
+                // Lisää kanavat yksi kerrallaan allekkain
+                const channelContainer = lastContainer.querySelector('.channel-container');
+                const addButton = channelContainer.querySelector('button');
+                
+                Object.entries(sceneData.channels).forEach(([channel, velocity]) => {
+                    const newChannelRow = document.createElement('div');
+                    newChannelRow.className = 'channel-row';
+                    newChannelRow.innerHTML = `
+                        <label>Kanava:</label>
+                        <input type="number" class="channel-input" value="${channel}" min="1" max="100" oninput="markAsUnsaved()">
+                        <label>Arvo (0-127):</label>
+                        <input type="number" class="velocity-input" value="${velocity}" min="0" max="127" oninput="markAsUnsaved()">
+                        <button class="button remove-button" onclick="removeChannel(this)">❌</button>
+                    `;
+                    channelContainer.insertBefore(newChannelRow, addButton);
+                });
+            });
+            
+            // Päivitä numerointi
+            renumberScenes();
+            
+            // Merkitse tallennetuksi
+            markAsSaved();
+            
+            showStatus(`Esitys "${preset.name}" ladattu onnistuneesti!`, 'success');
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusModal = document.getElementById('statusModal');
+            const statusContent = document.getElementById('statusContent');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            // Aseta väri tyypin mukaan
+            let iconColor = '#78dbff'; // info
+            let icon = '💫';
+            
+            if (type === 'success') {
+                iconColor = '#00ff88';
+                icon = '✅';
+            } else if (type === 'error') {
+                iconColor = '#ff4466';
+                icon = '❌';
+            } else if (type === 'warning') {
+                iconColor = '#ffaa00';
+                icon = '⚠️';
+            }
+            
+            // Lyhennä pitkät polut jos tarpeen
+            let displayMessage = message;
+            if (message.length > 120 && message.includes('/')) {
+                // Jos viesti on pitkä ja sisältää polkuja, lyhennä keskeltä
+                const parts = message.split('/');
+                if (parts.length > 4) {
+                    displayMessage = parts.slice(0, 2).join('/') + '/.../' + parts.slice(-2).join('/');
+                }
+            }
+            
+            statusMessage.innerHTML = `${icon} ${displayMessage}`;
+            statusContent.style.borderColor = iconColor;
+            statusContent.style.boxShadow = `0 0 30px ${iconColor}`;
+            
+            // Näytä modal
+            statusModal.style.display = 'flex';
+            statusContent.style.animation = 'statusFadeIn 0.3s ease-out';
+            
+            // Piilota automaattisesti 3 sekunnin kuluttua
+            setTimeout(() => {
+                closeStatusModal();
+            }, 3000);
+        }
+
+        function closeStatusModal(event) {
+            if (event && event.target !== document.getElementById('statusModal')) {
+                return; // Klikkaus ei ollut taustalla
+            }
+            
+            const statusModal = document.getElementById('statusModal');
+            const statusContent = document.getElementById('statusContent');
+            
+            statusContent.style.animation = 'statusFadeOut 0.3s ease-out';
+            setTimeout(() => {
+                statusModal.style.display = 'none';
+            }, 300);
+        }
+
+        // Teeman mukainen varmistusdialogi
+        function showConfirmDialog(title, message, confirmText = 'OK', cancelText = 'Peruuta') {
+            console.log('showConfirmDialog called with:', title, message);
+            return new Promise((resolve) => {
+                console.log('Creating dialog overlay...');
+                const dialogOverlay = document.createElement('div');
+                dialogOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 2000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+
+                console.log('Creating dialog...');
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    background: linear-gradient(135deg, rgba(26, 0, 51, 0.95) 0%, rgba(51, 0, 102, 0.95) 100%);
+                    border: 2px solid #8a2be2;
+                    border-radius: 15px;
+                    padding: 25px;
+                    max-width: 400px;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+                    text-align: center;
+                `;
+
+                dialog.innerHTML = `
+                    <h3 style="color: #78dbff; margin-top: 0; margin-bottom: 15px;">${title}</h3>
+                    <p style="color: #ffffff; margin-bottom: 25px; line-height: 1.4;">${message}</p>
+                    <div style="display: flex; gap: 15px; justify-content: center;">
+                        <button id="confirmBtn" class="button" style="background: linear-gradient(45deg, #330066, #78dbff);">${confirmText}</button>
+                        <button id="cancelBtn" class="button" style="background: linear-gradient(45deg, #660033, #ff4466);">${cancelText}</button>
+                    </div>
+                `;
+
+                console.log('Setting up event listeners...');
+                const confirmBtn = dialog.querySelector('#confirmBtn');
+                const cancelBtn = dialog.querySelector('#cancelBtn');
+
+                confirmBtn.addEventListener('click', () => {
+                    console.log('Confirm button clicked');
+                    dialogOverlay.remove();
+                    resolve(true);
+                });
+
+                cancelBtn.addEventListener('click', () => {
+                    console.log('Cancel button clicked');
+                    dialogOverlay.remove();
+                    resolve(false);
+                });
+
+                // ESC-näppäin peruuttaa
+                const handleKeyPress = (e) => {
+                    if (e.key === 'Escape') {
+                        console.log('ESC key pressed');
+                        dialogOverlay.remove();
+                        document.removeEventListener('keydown', handleKeyPress);
+                        resolve(false);
+                    }
+                };
+                document.addEventListener('keydown', handleKeyPress);
+
+                console.log('Appending dialog to overlay...');
+                dialogOverlay.appendChild(dialog);
+                console.log('Appending overlay to body...');
+                document.body.appendChild(dialogOverlay);
+                console.log('Dialog should now be visible');
+            });
+        }
+
+        // Kolmen vaihtoehdon dialogi (Tallenna/Hylkää/Peruuta)
+        function showTripleConfirmDialog(title, message, saveText = 'Tallenna', discardText = 'Hylkää', cancelText = 'Peruuta') {
+            console.log('showTripleConfirmDialog called with:', title, message);
+            return new Promise((resolve) => {
+                console.log('Creating triple dialog overlay...');
+                const dialogOverlay = document.createElement('div');
+                dialogOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 2000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    background: linear-gradient(135deg, rgba(26, 0, 51, 0.95) 0%, rgba(51, 0, 102, 0.95) 100%);
+                    border: 2px solid #8a2be2;
+                    border-radius: 15px;
+                    padding: 25px;
+                    max-width: 450px;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+                    text-align: center;
+                `;
+
+                dialog.innerHTML = `
+                    <h3 style="color: #78dbff; margin-top: 0; margin-bottom: 15px;">${title}</h3>
+                    <p style="color: #ffffff; margin-bottom: 25px; line-height: 1.4;">${message}</p>
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button id="saveBtn" class="button" style="background: linear-gradient(45deg, #006600, #00ff88);">💾 ${saveText}</button>
+                        <button id="discardBtn" class="button" style="background: linear-gradient(45deg, #660033, #ff4466);">🗑️ ${discardText}</button>
+                        <button id="cancelBtn" class="button" style="background: linear-gradient(45deg, #333333, #666666);">❌ ${cancelText}</button>
+                    </div>
+                `;
+
+                const saveBtn = dialog.querySelector('#saveBtn');
+                const discardBtn = dialog.querySelector('#discardBtn');
+                const cancelBtn = dialog.querySelector('#cancelBtn');
+
+                saveBtn.addEventListener('click', () => {
+                    console.log('Save button clicked');
+                    dialogOverlay.remove();
+                    resolve('save');
+                });
+
+                discardBtn.addEventListener('click', () => {
+                    console.log('Discard button clicked');
+                    dialogOverlay.remove();
+                    resolve('discard');
+                });
+
+                cancelBtn.addEventListener('click', () => {
+                    console.log('Cancel button clicked');
+                    dialogOverlay.remove();
+                    resolve('cancel');
+                });
+
+                // ESC-näppäin peruuttaa
+                const handleKeyPress = (e) => {
+                    if (e.key === 'Escape') {
+                        console.log('ESC key pressed');
+                        dialogOverlay.remove();
+                        document.removeEventListener('keydown', handleKeyPress);
+                        resolve('cancel');
+                    }
+                };
+                document.addEventListener('keydown', handleKeyPress);
+
+                dialogOverlay.appendChild(dialog);
+                document.body.appendChild(dialogOverlay);
+            });
+        }
+
+        // Tekstitä kysymään dialogi
+        function showPromptDialog(title, message, defaultValue = '', confirmText = 'OK', cancelText = 'Peruuta') {
+            return new Promise((resolve) => {
+                const dialogOverlay = document.createElement('div');
+                dialogOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 2000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    background: linear-gradient(135deg, rgba(26, 0, 51, 0.95) 0%, rgba(51, 0, 102, 0.95) 100%);
+                    border: 2px solid #8a2be2;
+                    border-radius: 15px;
+                    padding: 25px;
+                    max-width: 400px;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+                    text-align: center;
+                `;
+
+                dialog.innerHTML = `
+                    <h3 style="color: #78dbff; margin-top: 0; margin-bottom: 15px;">${title}</h3>
+                    <p style="color: #ffffff; margin-bottom: 20px; line-height: 1.4;">${message}</p>
+                    <input type="text" id="promptInput" value="${defaultValue}" style="
+                        width: 100%;
+                        padding: 10px;
+                        margin-bottom: 20px;
+                        background: rgba(0, 0, 0, 0.5);
+                        border: 2px solid rgba(120, 219, 255, 0.5);
+                        border-radius: 5px;
+                        color: #78dbff;
+                        font-family: 'Monaco', 'Menlo', 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;
+                        box-sizing: border-box;
+                    ">
+                    <div style="display: flex; gap: 15px; justify-content: center;">
+                        <button id="confirmBtn" class="button" style="background: linear-gradient(45deg, #330066, #78dbff);">${confirmText}</button>
+                        <button id="cancelBtn" class="button" style="background: linear-gradient(45deg, #660033, #ff4466);">${cancelText}</button>
+                    </div>
+                `;
+
+                const input = dialog.querySelector('#promptInput');
+                const confirmBtn = dialog.querySelector('#confirmBtn');
+                const cancelBtn = dialog.querySelector('#cancelBtn');
+
+                // Fokus ja valinta
+                setTimeout(() => {
+                    input.focus();
+                    input.select();
+                }, 100);
+
+                const closeDialog = (result) => {
+                    dialogOverlay.remove();
+                    document.removeEventListener('keydown', handleKeyPress);
+                    resolve(result);
+                };
+
+                confirmBtn.addEventListener('click', () => {
+                    closeDialog(input.value.trim());
+                });
+
+                cancelBtn.addEventListener('click', () => {
+                    closeDialog(null);
+                });
+
+                // Enter ja ESC-näppäimet
+                const handleKeyPress = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        closeDialog(input.value.trim());
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        closeDialog(null);
+                    }
+                };
+                document.addEventListener('keydown', handleKeyPress);
+
+                dialogOverlay.appendChild(dialog);
+                document.body.appendChild(dialogOverlay);
+            });
+        }
+
+        // Valintojen dialogi
+        function showChoiceDialog(title, message, choices, cancelText = 'Peruuta') {
+            return new Promise((resolve) => {
+                const dialogOverlay = document.createElement('div');
+                dialogOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    z-index: 2000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                `;
+
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    background: linear-gradient(135deg, rgba(26, 0, 51, 0.95) 0%, rgba(51, 0, 102, 0.95) 100%);
+                    border: 2px solid #8a2be2;
+                    border-radius: 15px;
+                    padding: 25px;
+                    max-width: 450px;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+                    text-align: center;
+                `;
+
+                let choicesHtml = '';
+                choices.forEach((choice, index) => {
+                    choicesHtml += `<button class="choice-btn button" data-value="${choice.value}" style="
+                        display: block;
+                        width: 100%;
+                        margin-bottom: 10px;
+                        background: linear-gradient(45deg, #330066, #78dbff);
+                    ">${choice.text}</button>`;
+                });
+
+                dialog.innerHTML = `
+                    <h3 style="color: #78dbff; margin-top: 0; margin-bottom: 15px;">${title}</h3>
+                    <p style="color: #ffffff; margin-bottom: 25px; line-height: 1.4;">${message}</p>
+                    <div style="margin-bottom: 20px;">
+                        ${choicesHtml}
+                    </div>
+                    <button id="cancelBtn" class="button" style="background: linear-gradient(45deg, #660033, #ff4466);">${cancelText}</button>
+                `;
+
+                const choiceBtns = dialog.querySelectorAll('.choice-btn');
+                const cancelBtn = dialog.querySelector('#cancelBtn');
+
+                const closeDialog = (result) => {
+                    dialogOverlay.remove();
+                    document.removeEventListener('keydown', handleKeyPress);
+                    resolve(result);
+                };
+
+                choiceBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        closeDialog(btn.dataset.value);
+                    });
+                });
+
+                cancelBtn.addEventListener('click', () => {
+                    closeDialog(null);
+                });
+
+                // ESC-näppäin peruuttaa
+                const handleKeyPress = (e) => {
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        closeDialog(null);
+                    }
+                };
+                document.addEventListener('keydown', handleKeyPress);
+
+                dialogOverlay.appendChild(dialog);
+                document.body.appendChild(dialogOverlay);
+            });
+        }
+
+        async function generateMIDIs() {
+            const downloadDiv = document.getElementById('downloadLinks');
+            downloadDiv.innerHTML = '<h2>Luodaan MIDI-tiedostoja...</h2>';
+            
+            const generateButton = document.getElementById('generateButton');
+            generateButton.disabled = true;
+            generateButton.textContent = '⏳ Luodaan...';
+            
+            try {
+                const scenes = document.querySelectorAll('.scene-container');
+                if (scenes.length === 0) {
+                    showStatus('Ei kohtauksia generointia varten.', 'error');
+                    return;
+                }
+
+                const steps = parseInt(document.getElementById('stepsNum').value) || 20;
+                const outputDir = document.getElementById('outputDir').value.trim() || 'generated_midi';
+                const scenesData = [];
+
+                // Kerää tiedot kaikista kohtauksista
+                let hasValidScenes = false;
+                scenes.forEach(sceneDiv => {
+                    const sceneName = sceneDiv.querySelector('.scene-name').value.trim();
+                    if (!sceneName) return;
+                    
+                    hasValidScenes = true;
+                    const fadeInputs = sceneDiv.querySelectorAll('.fade-input');
+                    const fadeInDuration = parseFloat(fadeInputs[0].value) || 1.0;
+                    const fadeOutDuration = parseFloat(fadeInputs[1].value) || 1.0;
+                    
+                    const channelRows = sceneDiv.querySelectorAll('.channel-row');
+                    const channels = {};
+                    
+                    channelRows.forEach(row => {
+                        const channelInput = row.querySelector('.channel-input');
+                        const velocityInput = row.querySelector('.velocity-input');
+                        if (channelInput && velocityInput) {
+                            const channel = parseInt(channelInput.value);
+                            const velocity = parseInt(velocityInput.value);
+                            if (channel && velocity >= 0) {
+                                channels[channel] = velocity;
+                            }
+                        }
+                    });
+
+                    if (Object.keys(channels).length > 0) {
+                        scenesData.push({
+                            name: sceneName,
+                            channels: channels,
+                            fade_in_duration: fadeInDuration,
+                            fade_out_duration: fadeOutDuration,
+                            steps: steps
+                        });
+                    }
+                });
+
+                if (!hasValidScenes) {
+                    showStatus('Ei kelvollisia kohtauksia generointia varten.', 'error');
+                    return;
+                }
+
+                showStatus(`Luodaan MIDI-tiedostoja ${scenesData.length} kohtaukselle...`, 'info');
+
+                // Lähetä data Python-backendille Electron API:n kautta
+                const requestData = {
+                    scenes: scenesData,
+                    outputDir: outputDir
+                };
+
+                if (window.electronAPI) {
+                    // Electron-versio: käytä natiivia API:a
+                    const midiResult = await window.electronAPI.generateMidi(requestData);
+
+                    if (midiResult.success) {
+                        downloadDiv.innerHTML = `<h2>✅ MIDI-tiedostot luotu onnistuneesti!</h2>
+                            <p><strong>📁 Tallennushakemisto:</strong> ${midiResult.output_directory || outputDir}</p>`;
+                        
+                        if (midiResult.results) {
+                            midiResult.results.forEach(sceneResult => {
+                                const p = document.createElement('p');
+                                p.innerHTML = `
+                                    <strong>${sceneResult.scene}</strong> 
+                                    (${sceneResult.steps} steppiä, ${sceneResult.channels_count} kanavaa):
+                                <br>
+                                📈 ${sceneResult.fade_in_file} | 📉 ${sceneResult.fade_out_file}
+                            `;
+                            downloadDiv.appendChild(p);
+                        });
+                    }
+                    
+                    showStatus(`${scenesData.length} kohtausta käsitelty onnistuneesti! Tallennushakemisto: ${outputDir}`, 'success');
+                } else {
+                    throw new Error(midiResult.error || 'Tuntematon virhe');
+                }
+                } else {
+                    // Web-versio: käytä HTTP-backendia
+                    const response = await fetch('/generate-midi', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const midiResult = await response.json();
+
+                    if (midiResult.success) {
+                        downloadDiv.innerHTML = `<h2>✅ MIDI-tiedostot luotu onnistuneesti!</h2>
+                            <p><strong>📁 Tallennushakemisto:</strong> ${midiResult.output_directory || outputDir}</p>`;
+                        
+                        if (midiResult.results) {
+                            midiResult.results.forEach(sceneResult => {
+                                const p = document.createElement('p');
+                                p.innerHTML = `
+                                    <strong>${sceneResult.scene}</strong> 
+                                    (${sceneResult.steps} steppiä, ${sceneResult.channels_count} kanavaa):
+                                <br>
+                                📈 ${sceneResult.fade_in_file} | 📉 ${sceneResult.fade_out_file}
+                            `;
+                                downloadDiv.appendChild(p);
+                            });
+                        }
+                        
+                        showStatus(`${scenesData.length} kohtausta käsitelty onnistuneesti! Tallennushakemisto: ${outputDir}`, 'success');
+                    } else {
+                        throw new Error(midiResult.error || 'Tuntematon virhe');
+                    }
+                }
+
+            } catch (error) {
+                console.error('Virhe MIDI-generaatiossa:', error);
+                downloadDiv.innerHTML = '<h2>❌ Virhe MIDI-tiedostojen luonnissa</h2>';
+                showStatus(`Virhe: ${error.message}`, 'error');
+                
+                // Näytä Python-backend ohjeet jos palvelin ei vastaa
+                if (error.message.includes('fetch')) {
+                    const instructionsDiv = document.createElement('div');
+                    instructionsDiv.innerHTML = `
+                        <h3>🐍 Python-palvelinta ei löytynyt</h3>
+                        <p>Käynnistä Python-palvelin terminaalissa:</p>
+                        <pre style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; color: #78dbff;">
+cd /Users/raulivirtanen/Documents/valot
+python3 -m http.server 8000 --cgi
+                        </pre>
+                        <p>Sitten avaa selaimessa: <a href="http://localhost:8000/valot3.html">http://localhost:8000/valot3.html</a></p>
+                    `;
+                    downloadDiv.appendChild(instructionsDiv);
+                }
+                
+            } finally {
+                generateButton.disabled = false;
+                generateButton.textContent = '🎵 Generoi MIDI-tiedostot';
+            }
+        }
+
+        // Alusta ensimmäinen tyhjä kohtaus
+        addNewScene();
+        
+        // Varoita tallentamattomista muutoksista ennen sivun sulkemista
+        window.addEventListener('beforeunload', (e) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = 'Sinulla on tallentamattomia muutoksia. Haluatko varmasti poistua?';
+                return e.returnValue;
+            }
+        });
+        
+        // Alusta tallennuksen tila
+        markAsSaved();
+    </script>
+</body>
+</html>

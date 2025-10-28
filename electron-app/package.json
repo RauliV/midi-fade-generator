@@ -1,0 +1,81 @@
+{
+  "name": "midi-fade-generator-electron",
+  "version": "1.0.0",
+  "description": "Beautiful MIDI Fade Generator with neon theme for Windows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron .",
+    "build": "electron-builder",
+    "build-win": "electron-builder --win",
+    "build-mac": "electron-builder --mac",
+    "build-all": "electron-builder --win --mac",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "midi",
+    "lighting",
+    "fade",
+    "generator",
+    "electron",
+    "dmx"
+  ],
+  "author": "RauliV",
+  "license": "MIT",
+  "type": "commonjs",
+  "build": {
+    "appId": "com.rauliv.midi-fade-generator",
+    "productName": "MIDI Fade Generator",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "valot_python_backend.py",
+      "nuotti.jpg",
+      "node_midi_generator.js",
+      "assets/**/*",
+      "node_modules/jsmidgen/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.music",
+      "identity": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^38.4.0",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "jsmidgen": "^0.1.5"
+  }
+}
