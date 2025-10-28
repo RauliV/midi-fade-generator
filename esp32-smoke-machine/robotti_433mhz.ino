@@ -179,22 +179,50 @@ void showSmokeConfirmation() {
 }
 
 void updateEyeAnimations() {
-  // Automaattinen silmien liike jos ei manuaalista toimintaa
-  if (millis() - lastAnimationTime > 5000) { // 5s välein
-    // Satunnainen silmä-animaatio
-    int randomAnim = random(0, 6);
-    
-    switch (randomAnim) {
-      case 0: setEyeState("center"); break;
-      case 1: setEyeState("left"); break;
-      case 2: setEyeState("right"); break;
-      case 3: setEyeState("up"); break;
-      case 4: setEyeState("down"); break;
-      case 5: setEyeState("blink"); break;
+  // Battery-aware animation system
+  float batteryLevel = getBatteryLevel(); // 0.0 - 1.0
+  
+  if (batteryLevel < 0.2) {
+    // Low battery → Sleepy mode
+    if (millis() - lastAnimationTime > 8000) {
+      setEyeState("sleepy");
+      lastAnimationTime = millis();
     }
-    
-    lastAnimationTime = millis();
+  } else if (batteryLevel < 0.5) {
+    // Medium battery → Slower animations  
+    if (millis() - lastAnimationTime > 6000) {
+      int randomAnim = random(0, 4); // Fewer animations
+      switch (randomAnim) {
+        case 0: setEyeState("center"); break;
+        case 1: setEyeState("blink"); break;
+        case 2: setEyeState("left"); break;
+        case 3: setEyeState("right"); break;
+      }
+      lastAnimationTime = millis();
+    }
+  } else {
+    // Full battery → All animations
+    if (millis() - lastAnimationTime > 4000) {
+      int randomAnim = random(0, 7);
+      switch (randomAnim) {
+        case 0: setEyeState("center"); break;
+        case 1: setEyeState("left"); break;
+        case 2: setEyeState("right"); break;
+        case 3: setEyeState("up"); break;
+        case 4: setEyeState("down"); break;
+        case 5: setEyeState("blink"); break;
+        case 6: setEyeState("roll"); break;
+      }
+      lastAnimationTime = millis();
+    }
   }
+}
+
+float getBatteryLevel() {
+  // Read battery voltage if available
+  // Return 0.0-1.0 representing charge level
+  int rawValue = analogRead(BATTERY_PIN);
+  return constrain(rawValue / 4095.0, 0.0, 1.0);
 }
 
 void updateStatusDisplay() {
