@@ -18,16 +18,30 @@ import json
 import os
 from datetime import datetime
 
-# ESP32 Savukone API
-ESP32_BASE_URL = "http://esp32-smoke.local/api"  # Muokkaa omaan IP:hen
+# ESP32 Savukone API (WiFi Access Point)
+ESP32_BASE_URL = "http://192.168.4.1"  # savupalvelin2.ino WiFi AP IP
 
-# Savukoneiden mapping
+# Robotti-kaukolaukaisin API
+ROBOT_REMOTE_URL = "http://192.168.4.1"  # sama verkko kuin savupalvelin
+
+# Savukoneiden + silmien mapping  
 SMOKE_MACHINE_MAP = {
-    41: {"name": "Smoke_Front_Left", "endpoint": "/smoke/front_left"},
-    42: {"name": "Smoke_Front_Right", "endpoint": "/smoke/front_right"}, 
-    43: {"name": "Smoke_Back_Left", "endpoint": "/smoke/back_left"},
-    44: {"name": "Smoke_Back_Right", "endpoint": "/smoke/back_right"},
-    45: {"name": "Smoke_Center_Stage", "endpoint": "/smoke/center"}
+    41: {"name": "Smoke_Front_Left", "endpoint": "/set-eye-state", "eye_state": "smoke"},
+    42: {"name": "Smoke_Front_Right", "endpoint": "/set-eye-state", "eye_state": "smoke"}, 
+    43: {"name": "Smoke_Back_Left", "endpoint": "/set-eye-state", "eye_state": "smoke"},
+    44: {"name": "Smoke_Back_Right", "endpoint": "/set-eye-state", "eye_state": "smoke"},
+    45: {"name": "Smoke_Center_Stage", "endpoint": "/set-eye-state", "eye_state": "smoke"}
+}
+
+# Robotti-silmien animaatiot MIDI-kanavien mukaan
+EYE_ANIMATION_MAP = {
+    46: {"name": "Robot_Eyes_Center", "eye_state": "center"},
+    47: {"name": "Robot_Eyes_Left", "eye_state": "left"},
+    48: {"name": "Robot_Eyes_Right", "eye_state": "right"},
+    49: {"name": "Robot_Eyes_Up", "eye_state": "up"}, 
+    50: {"name": "Robot_Eyes_Down", "eye_state": "down"},
+    51: {"name": "Robot_Eyes_Blink", "eye_state": "blink"},
+    52: {"name": "Robot_Eyes_Roll", "eye_state": "roll"}
 }
 
 def scan_blender_lights():
@@ -46,15 +60,30 @@ def scan_blender_lights():
         # Tarkista onko savukone (simulaatio)
         for channel, smoke_info in SMOKE_MACHINE_MAP.items():
             if smoke_info["name"] in light_name:
-                # Savukone löydetty - muunna energy HTTP-intensiteetiksi
+                # Savukone löydetty - muunna energy HTTP-komennoksi
                 intensity = min(100, int((energy / 300.0) * 100))  # 0-100%
                 smoke_data[channel] = {
                     "name": smoke_info["name"],
                     "endpoint": smoke_info["endpoint"], 
+                    "eye_state": smoke_info["eye_state"],
                     "intensity": intensity,
                     "duration": 5  # Oletus 5s pulssi
                 }
-                print(f"🌫️ Smoke: {light_name} → intensity {intensity}%")
+                print(f"🌫️ Smoke: {light_name} → {smoke_info['eye_state']} intensity {intensity}%")
+                continue
+                
+        # Tarkista onko robotti-silmien animaatio
+        for channel, eye_info in EYE_ANIMATION_MAP.items():
+            if eye_info["name"] in light_name:
+                # Robotti-silmä-animaatio löydetty
+                smoke_data[channel] = {
+                    "name": eye_info["name"],
+                    "endpoint": "/set-eye-state",
+                    "eye_state": eye_info["eye_state"], 
+                    "intensity": int((energy / 300.0) * 100),
+                    "duration": 2  # Lyhyempi animaatio
+                }
+                print(f"👁️ Robot Eyes: {light_name} → {eye_info['eye_state']}")
                 continue
         
         # Tavallinen valo - RGBW tai single

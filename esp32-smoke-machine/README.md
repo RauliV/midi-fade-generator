@@ -1,23 +1,24 @@
-# 🌫️ ESP32 Smoke Machine Controller
+# � ESP32 Teatteri-savukone + Robotti-kaukolaukaisin
 
-**WiFi-ohjattu savukone ESP32:lla näytelmäintegraatioon**
+Ammattimainen teatteri-järjestelmä joka yhdistää:
+- **WiFi-savukoneet** HTTP API:lla  
+- **Robotti-kaukolaukaisin** OLED-silmillä
+- **Multiplay-integraatio** show-ohjaukseen
+- **Blender-simulaatio** koko setupille
 
-## 🎭 Osa täydellistä näytelmäjärjestelmää:
-- **Multiplay** - Päämittaus
-- **Scene Setter** - Valot (MIDI)  
-- **ESP32** - Savukoneet (HTTP)
-- **Blender** - Simulaatio
+## 🎪 Järjestelmän osat
 
-## 🔧 Hardware
+### 1. Savupalvelin (ESP32 Access Point)
+- **Tiedosto**: `savupalvelin2.ino`
+- **Tehtävä**: WiFi AP + HTTP API + silmä-simulaatio  
+- **IP**: 192.168.4.1
+- **Releet**: Pin 27 (savukone)
 
-### Komponentit:
-- ESP32 Development Board
-- Relay Module (5V/10A)
-- Savukone (12V/24V)
-- WiFi network access
-- Power supply
-
-### Kytkentä:
+### 2. Robotti-kaukolaukaisin (ESP32 Client)  
+- **Tiedosto**: `nappipuoli2.ino`
+- **Tehtävä**: OLED-silmät + manuaalinen nappi
+- **Komponentit**: SSD1306 OLED + painonappi
+- **Yhteys**: WiFi client → savupalvelimeen
 ```
 ESP32 GPIO 2  → Relay IN
 ESP32 GND     → Relay GND  
