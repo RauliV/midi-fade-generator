@@ -34,9 +34,7 @@ def create_fade_midi(filename, notes, velocities, duration, is_fade_in, steps=20
             mf.addNote(track, channel, note, time, hold_beats, target_vel)
         time += hold_beats
         
-        # Note off
-        for note in notes:
-            mf.addNote(track, channel, note, time, 0.1, 0)
+        # Fade-in does not add note-off, notes should sustain until fade-out
     else:
         # Fade-out: target -> 0
         for step in range(steps + 1):
@@ -61,13 +59,15 @@ def main():
     Pääfunktio joka lukee JSON-datan stdin:stä ja luo MIDI-tiedostot
     """
     try:
-                # Lue data stdin:stä
-        data = json.load(sys.stdin)
+        # Lue JSON-data stdin:stä
+        input_data = sys.stdin.read()
+        data = json.loads(input_data)
         
-        # Määritä output-hakemisto
-        output_dir = data.get('outputDir', '.')
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir, exist_ok=True)
+        # Hae output-hakemisto
+        output_dir = data.get('outputDir', 'generated_midi')
+        
+        # Varmista että output-hakemisto on olemassa
+        os.makedirs(output_dir, exist_ok=True)
         
         results = []
         
@@ -85,6 +85,7 @@ def main():
             # Luo tiedostonimet output-hakemistoon
             fade_in_filename = f"{scene_name}_fade_in.mid"
             fade_out_filename = f"{scene_name}_fade_out.mid"
+            
             fade_in_filepath = os.path.join(output_dir, fade_in_filename)
             fade_out_filepath = os.path.join(output_dir, fade_out_filename)
             
@@ -104,9 +105,10 @@ def main():
                 'steps': steps
             })
         
-        # Palauta tulokset JSON-muodossa
+        # Palauta tulokset JSON-muodossa (lisää output_directory tietoihin)
         print(json.dumps({
             'success': True,
+            'output_directory': os.path.abspath(output_dir),
             'results': results
         }, indent=2))
         

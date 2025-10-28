@@ -58,6 +58,12 @@ def main():
         input_data = sys.stdin.read()
         data = json.loads(input_data)
         
+        # Hae output-hakemisto
+        output_dir = data.get('outputDir', 'generated_midi')
+        
+        # Varmista että output-hakemisto on olemassa
+        os.makedirs(output_dir, exist_ok=True)
+        
         results = []
         
         for scene in data['scenes']:
@@ -71,14 +77,17 @@ def main():
             notes = [69 + int(channel) for channel in channels.keys()]
             velocities = list(channels.values())
             
-            # Luo tiedostonimet
+            # Luo tiedostonimet output-hakemistoon
             fade_in_filename = f"{scene_name}_fade_in.mid"
             fade_out_filename = f"{scene_name}_fade_out.mid"
             
+            fade_in_filepath = os.path.join(output_dir, fade_in_filename)
+            fade_out_filepath = os.path.join(output_dir, fade_out_filename)
+            
             # Luo MIDI-tiedostot
-            fade_in_path = create_fade_midi(fade_in_filename, notes, velocities, 
+            fade_in_path = create_fade_midi(fade_in_filepath, notes, velocities, 
                                           fade_in_duration, True, steps)
-            fade_out_path = create_fade_midi(fade_out_filename, notes, velocities,
+            fade_out_path = create_fade_midi(fade_out_filepath, notes, velocities,
                                            fade_out_duration, False, steps)
             
             results.append({
@@ -91,9 +100,10 @@ def main():
                 'steps': steps
             })
         
-        # Palauta tulokset JSON-muodossa
+        # Palauta tulokset JSON-muodossa (lisää output_directory tietoihin)
         print(json.dumps({
             'success': True,
+            'output_directory': os.path.abspath(output_dir),
             'results': results
         }, indent=2))
         
