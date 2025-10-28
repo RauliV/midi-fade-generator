@@ -1,0 +1,68 @@
+# 🎭 MIDI Fade Generator - Smart Git Ignore
+
+## === CORE PROJEKTI (MUKAAN) ===
+# README.md ✅
+# blender-integration/ ✅
+# midimaker5.py ✅  
+# midi-fade-generator-electron/ (valikoitu) ✅
+
+## === TURHA TAVARA (POIS) ===
+
+# Sisäkkäiset git-repot
+midi-fade-generator/
+
+# Vanhat HTML-testit
+valot*.html
+valotC_M_VVP.html
+valotG.html
+
+# Turva-kansio ja backupit
+turva/
+*.backup
+*.json.backup
+
+# Test-tiedostot ja vanhat skriptit
+test_import.json
+chuck.py
+ikoni.py
+baari1.py
+rouvarajahdys.py
+fadeout*.py
+midimaker.py
+midimaker2.py
+remove_duplicates.py
+valot.py
+valot.txt
+
+# Vanhat iconit ja binäärit
+*.ico
+*.icns
+nuotti.jpg
+*.rtf
+*.spec
+
+# Generated MIDI files ja JSON exports
+*.mid
+generated_midi/
+BlenderExport.json
+
+# VS Code settings
+.vscode/
+
+# Build-skriptit (vanhat)
+build_windows.ps1
+
+# Python ja Node artifacts
+__pycache__/
+node_modules/
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Electron build artifacts
+midi-fade-generator-electron/MyIcon.iconset/
+midi-fade-generator-electron/assets/
+midi-fade-generator-electron/package-lock.json

@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Tunnelmakohtaus",
+    "channels": {
+      "1": 80,
+      "2": 60,
+      "4": 40,
+      "15": 127,
+      "16": 100
+    },
+    "fade_in_duration": 3.0,
+    "fade_out_duration": 2.5,
+    "steps": 20
+  },
+  {
+    "name": "Räjähdyskohtaus", 
+    "channels": {
+      "1": 127,
+      "2": 127,
+      "3": 127,
+      "4": 127,
+      "5": 127,
+      "13": 127,
+      "14": 127,
+      "15": 127,
+      "16": 127
+    },
+    "fade_in_duration": 0.5,
+    "fade_out_duration": 4.0,
+    "steps": 10
+  },
+  {
+    "name": "Hiljaisuus",
+    "channels": {
+      "4": 25,
+      "8": 30
+    },
+    "fade_in_duration": 5.0,
+    "fade_out_duration": 8.0,
+    "steps": 30
+  }
+]
