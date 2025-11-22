@@ -1,0 +1,41 @@
+// Lisää savupalvelin2_eiAP.ino alkuun näiden WiFi asetusten jälkeen:
+
+// Kiinteä IP-osoite konfiguraatio (TUOTANTOYMPÄRISTÖ - EI INTERNET-YHTEYTTÄ)
+IPAddress local_IP(192, 168, 1, 2);      // Savupalvelimen kiinteä IP
+IPAddress gateway(192, 168, 1, 1);        // Reitittimen IP (yleensä .1)
+IPAddress subnet(255, 255, 255, 0);       // Aliverkon maski
+IPAddress primaryDNS(192, 168, 1, 1);     // Käytä gateway:tä DNS:nä (tai ei käytössä)
+IPAddress secondaryDNS(192, 168, 1, 1);   // Sama kuin primary (tai 0.0.0.0)
+
+// Setup-funktiossa ENNEN WiFi.begin():
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(smokePin, OUTPUT);
+  digitalWrite(smokePin, LOW);
+
+  // Konfiguroi kiinteä IP ENNEN WiFi.begin()
+  if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
+    Serial.println("STA Failed to configure");
+  }
+
+  // Yhdistä WiFi:hen
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+  Serial.println("Connected to WiFi");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());  // Pitäisi näyttää 192.168.50.56
+  
+  // ... loput setup-koodista
+}
+
+HUOM: 
+- Varmista että gateway-osoite (192.168.50.1) on oikea sinun reitittimellesi
+- Jos et ole varma gateway:stä, aja: ipconfig getifaddr en0 && route get default | grep gateway
+- Bruno (nappipuoli2) pitää myös päivittää käyttämään 192.168.1.2 osoitetta
+- Muuta nappipuoli2.ino:ssa:
+  const String serverUrl = "http://192.168.1.2/get-eye-state";  
+  const String serverUrlPost = "http://192.168.1.2/set-eye-state";
