@@ -1,16 +1,72 @@
-# 🎭 MIDI Fade Generator - Complete Theater Control System
+# 🎭 Professional Theater Control System
 
-**Professional MIDI lighting + ESP32 smoke machine automation for live theater**
+**MIDI-based lighting and effects control for live theater production**
 
-## 🤖 Meet BRUNO - Our Theater Hero
+Built for Nokun Näyttämö's production of "Tankki Täyteen" - a comprehensive system combining MIDI lighting control, wireless smoke machines, and 3D-printed backup controllers.
 
-*Bruno is our retro-futuristic robotic remote controller - the reliable backup operator for professional theater smoke effects. When Multiplay automation fails, Bruno's simple "lift head → press button" operation keeps the show running perfectly.*
+## 🎯 What This Is
 
-**Big Remote Universal Navigator Operator - Your trusted theater companion! 🎪**
+**Professional theater lighting system** with three main components:
+
+1. **🎵 MIDI Light Control** - Generate complex lighting sequences using MIDI files
+2. **💨 ESP32 Smoke Machines** - Wireless effects control with WiFi backup
+3. **🤖 Bruno Robot** - 3D-printed physical backup controller for critical moments
+
+## 🚀 Quick Start
+
+```bash
+# Generate MIDI lighting sequences
+python midimaker.py
+
+# Export to professional Multiplay software  
+python multiplay_full_export.py
+
+# Flash ESP32 smoke machine firmware
+platformio run --target upload
+```
+
+## 🏗️ System Architecture
+
+### Hardware Stack
+- **Scene Setter 48** DMX controller → 22 theater lights (6 RGBW groups)
+- **Multiplay software** → Professional show management
+- **ESP32 modules** → Wireless smoke machine control
+- **Bruno robot** → Physical backup controller (3D printed)
+
+### Software Stack
+- **Python MIDI generation** → Complex lighting sequences
+- **Blender integration** → 3D visualization and export
+- **ESP32 firmware** → Wireless control with HTTP APIs
+- **Web interfaces** → Real-time system monitoring
+
+## 📁 Key Projects
+
+| Directory | Purpose | Technology |
+|-----------|---------|------------|
+| `esp32-smoke-machine/` | Wireless effects control | ESP32, WiFi, 433MHz |
+| `3d-models/bruno-robot/` | Physical backup controller | 3D printing, electronics |
+| `blender-integration/` | 3D visualization | Blender, Python |
+| `multiplay_full_export.py` | Professional theater export | MIDI, HTTP APIs |
+
+## 🎭 Live Theater Proven
+
+**Successfully used in production** at Nokun Näyttämö:
+- ✅ **22 synchronized lights** with complex sequences
+- ✅ **Wireless smoke effects** with physical backup
+- ✅ **Real-time MIDI generation** responsive to performance
+- ✅ **Professional documentation** for theater technicians
+
+## 🛠️ For Developers
+
+**Skills demonstrated:**
+- **Systems Integration:** Hardware + software + real-time performance
+- **3D Design & Manufacturing:** CAD modeling, 3D printing, electronics
+- **Professional Documentation:** Theater-ready specifications
+- **Reliability Engineering:** Backup systems for live performance
 
 ---
 
-## 🌟 Complete Theater Ecosystem
+*This system powers live theater lighting where failure is not an option.*
 
 ### 🎵 MIDI Generation (Electron App v1.1.6)
 - Professional fade-in/fade-out generation  

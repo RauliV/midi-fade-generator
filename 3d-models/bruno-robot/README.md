@@ -40,13 +40,8 @@ Bruno is a retro-futuristic robotic remote controller for professional theater s
 ## 📋 Parts List
 
 ### 3D Printed Components
-- [x] `bruno-head.stl` - Main head assembly (Bruno's distinctive neck/head design)
-- [x] `brunokaula.3mf` - Original 3MF project file
-- [x] `kaula2.3mf` - Design iteration 2
-- [x] `kaula3.3mf` - Design iteration 3  
-- [x] `kaula4.3mf` - Design iteration 4
-- [x] `kaula5.3mf` - Final optimized design
-- [x] `ffff.3mf` - Additional component variant
+- [x] `bruno-head.stl` - Main head/neck assembly (STL format)
+- [x] `kaula5.3mf` - Final optimized design (3MF project file)
 
 ### Hardware (Non-Printed)
 - [ ] M3 x 12mm screws (x6)
@@ -122,20 +117,19 @@ Bruno demonstrates advanced technical skills valuable in professional environmen
 ```
 bruno-robot/
 ├── README.md                    # This file
+├── ASSEMBLY.md                  # Build instructions
+├── SPECIFICATIONS.md            # Technical specifications
 ├── photos/
 │   └── bruno-hero.jpg          # Main promotional image
 ├── videos/
 │   ├── bruno-operation.mp4     # Full operation demonstration
 │   ├── bruno-assembly.avi      # Assembly process documentation
 │   └── bruno-latest.avi        # Latest development updates
-└── stl-files/
-    ├── bruno-head.stl          # Main head/neck assembly
-    ├── brunokaula.3mf          # Original 3MF project file
-    ├── kaula2.3mf              # Design iteration 2
-    ├── kaula3.3mf              # Design iteration 3
-    ├── kaula4.3mf              # Design iteration 4
-    ├── kaula5.3mf              # Final optimized design
-    └── ffff.3mf                # Additional component variant
+├── stl-files/
+│   ├── bruno-head.stl          # Main head/neck assembly
+│   └── kaula5.3mf              # Final 3MF project file
+└── printer-settings/
+    └── Bambu Lab P1S 0.4 nozzle.bbscfg  # Optimized print settings
 ```
 
 ## 🚀 Future Enhancements
